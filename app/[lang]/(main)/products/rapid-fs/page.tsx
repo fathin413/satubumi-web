@@ -20,6 +20,17 @@ import {
   Clock,
   X,
   Trash2,
+  Trees,
+  Wind,
+  CircleDollarSign,
+  TrendingUp,
+  Wallet,
+  Scale,
+  Users,
+  Sprout,
+  ShieldCheck,
+  Activity,
+  LineChart
 } from "lucide-react";
 import ScrollReveal from "../../../../../components/ScrollReveal";
 import en from "../../../../../dictionaries/en.json";
@@ -123,7 +134,12 @@ export default function ProductsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [results, setResults] = useState<any>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [showDownloadWarning, setShowDownloadWarning] = useState(false);
+  const [isOfficiallySaved, setIsOfficiallySaved] = useState(false);
+
+  const nextPath = `/${lang}/products/rapid-fs`;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -200,6 +216,7 @@ export default function ProductsPage() {
     setSuccessMsg(null);
     setResults(null);
     setSavedId(null);
+    setIsOfficiallySaved(false);
 
     try {
       let response: Response;
@@ -216,13 +233,14 @@ export default function ProductsPage() {
         formData.append("file", selectedFile);
         formData.append("location_name", locationName || "Spatial Project");
         formData.append("ecosystem_type", ecosystemType);
-        response = await fetch(`${API_URL}/rapid-fs/upload-shapefile`, {
+        
+        response = await fetch(`${API_URL}/rapid-fs/upload-shapefile?lang=${lang}`, {
           method: "POST",
           body: formData,
           signal: controller.signal,
         });
       } else {
-                response = await fetch(`${API_URL}/rapid-fs/calculate`, {
+        response = await fetch(`${API_URL}/rapid-fs/calculate?lang=${lang}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -260,7 +278,6 @@ export default function ProductsPage() {
       const calculatedData = await response.json();
       setResults(calculatedData);
 
-      // FITUR AUTO-SAVE (BACKGROUND)
       try {
         const token = localStorage.getItem("access_token");
         if (token) {
@@ -382,6 +399,7 @@ export default function ProductsPage() {
           : "Analysis results were saved to your account."
       );
       setShowSaveSuccess(true);
+      setIsOfficiallySaved(true);
     } catch (err: any) {
       setError(humanizeError(err.message || "Error", isId, mode));
     } finally {
@@ -390,14 +408,11 @@ export default function ProductsPage() {
   };
 
   const handleDownloadPDF = async () => {
-    if (!savedId) {
-      setError(
-        isId
-          ? "Simpan hasil analisis terlebih dahulu sebelum mengunduh PDF."
-          : "Please save the analysis before downloading the PDF."
-      );
+    if (!isOfficiallySaved || !savedId) {
+      setShowDownloadWarning(true);
       return;
     }
+    
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(`${API_URL}/reports/${savedId}/pdf`, {
@@ -495,13 +510,13 @@ export default function ProductsPage() {
           </p>
           <div className="flex flex-col gap-4">
             <Link
-              href={`/${lang}/login`}
+              href={`/${lang}/login?next=${encodeURIComponent(nextPath)}`}
               className="w-full py-4 bg-emerald-700 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-colors shadow-sm active:scale-95"
             >
               {t.login_btn}
             </Link>
             <Link
-              href={`/${lang}/register`}
+              href={`/${lang}/register?next=${encodeURIComponent(nextPath)}`}
               className="w-full py-4 border border-emerald-100 bg-emerald-50/50 text-emerald-800 font-bold rounded-2xl hover:bg-emerald-50 transition-colors active:scale-95"
             >
               {t.register_btn}
@@ -518,9 +533,6 @@ export default function ProductsPage() {
       <div className="absolute top-[10%] right-[-5%] w-[600px] h-[600px] bg-emerald-300/15 rounded-full blur-[150px] pointer-events-none z-0" />
       <div className="absolute bottom-[20%] left-[-5%] w-[500px] h-[500px] bg-cyan-300/15 rounded-full blur-[150px] pointer-events-none z-0" />
 
-      {/* ========================================= */}
-      {/* MODAL 1: LOADING & CANCEL BUTTON (Spring Bounce) */}
-      {/* ========================================= */}
       {isCalculating && (
         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] border border-emerald-100 shadow-2xl max-w-md w-full p-10 text-center relative overflow-hidden animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
@@ -564,15 +576,46 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ========================================= */}
-      {/* MODAL 2: SAVE SUCCESS (Spring Bounce + Ping) */}
-      {/* ========================================= */}
+      {/* POPUP PERINGATAN DOWNLOAD PDF SEBELUM SAVE */}
+      {showDownloadWarning && (
+        <div className="fixed inset-0 z-[110] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full overflow-hidden flex flex-col relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            
+            <div className="bg-gradient-to-br from-amber-400 to-amber-600 pt-10 pb-8 px-8 text-center relative overflow-hidden">
+              <div className="w-20 h-20 mx-auto bg-white rounded-full flex items-center justify-center shadow-lg relative z-10">
+                <div className="absolute inset-0 rounded-full border-2 border-white animate-ping opacity-50 duration-1000" />
+                <AlertCircle className="w-10 h-10 text-amber-500" />
+              </div>
+            </div>
+
+            <div className="p-8 pt-6 text-center">
+              <h3 className="text-2xl font-extrabold text-emerald-950 mb-2">
+                {isId ? "Perhatian" : "Action Required"}
+              </h3>
+              <p className="text-[13px] font-medium text-emerald-900/60 leading-relaxed mb-8">
+                {isId
+                  ? "Silakan simpan hasil analisis ke akun Anda terlebih dahulu sebelum mengunduh laporan PDF."
+                  : "Please save the analysis results to your account before downloading the PDF report."}
+              </p>
+              
+              <button
+                type="button"
+                onClick={() => setShowDownloadWarning(false)}
+                className="w-full py-4 bg-amber-500 text-white font-bold text-[14px] rounded-2xl hover:bg-amber-600 transition-colors shadow-sm active:scale-95"
+              >
+                {isId ? "Mengerti" : "Understood"}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {showSaveSuccess && (
         <div className="fixed inset-0 z-[110] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full overflow-hidden flex flex-col relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
             
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 pt-10 pb-8 px-8 text-center relative overflow-hidden">
-              {/* Efek Ping Ring Putih di Belakang */}
               <div className="w-20 h-20 mx-auto bg-white rounded-full flex items-center justify-center shadow-lg relative z-10">
                 <div className="absolute inset-0 rounded-full border-2 border-white animate-ping opacity-50 duration-1000" />
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
@@ -637,7 +680,7 @@ export default function ProductsPage() {
               {t.eyebrow}
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500 pb-1">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-cyan-500 py-2 leading-tight">
             Rapid-FS Scoring
           </h1>
           <p className="text-lg text-emerald-900/60 font-medium leading-relaxed max-w-2xl mx-auto">
@@ -890,81 +933,81 @@ export default function ProductsPage() {
                   )}
 
                   {mode === "manual" && (
-  <div className="space-y-6">
-    <div className="space-y-2">
-      <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
-        {t.location_name}
-      </label>
-      <input
-        type="text"
-        className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-        value={locationName}
-        onChange={(e) => setLocationName(e.target.value)}
-        placeholder="e.g., Alpha Carbon Project"
-      />
-    </div>
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
+                          {t.location_name}
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                          value={locationName}
+                          onChange={(e) => setLocationName(e.target.value)}
+                          placeholder="e.g., Alpha Carbon Project"
+                        />
+                      </div>
 
-    <div className="space-y-2">
-      <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
-        {t.ecosystem_type}
-      </label>
-      <select
-        className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] appearance-none cursor-pointer focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-        value={ecosystemType}
-        onChange={(e) => setEcosystemType(e.target.value)}
-      >
-        {ecosystemOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
+                      <div className="space-y-2">
+                        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
+                          {t.ecosystem_type}
+                        </label>
+                        <select
+                          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] appearance-none cursor-pointer focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                          value={ecosystemType}
+                          onChange={(e) => setEcosystemType(e.target.value)}
+                        >
+                          {ecosystemOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
-          Latitude
-        </label>
-        <input
-          type="number"
-          step="any"
-          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-          value={latitude}
-          onChange={(e) => setLatitude(e.target.value)}
-          placeholder="-2.5"
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
-          Longitude
-        </label>
-        <input
-          type="number"
-          step="any"
-          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-          value={longitude}
-          onChange={(e) => setLongitude(e.target.value)}
-          placeholder="113.5"
-        />
-      </div>
-    </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
+                            Latitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                            value={latitude}
+                            onChange={(e) => setLatitude(e.target.value)}
+                            placeholder="-2.5"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
+                            Longitude
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                            value={longitude}
+                            onChange={(e) => setLongitude(e.target.value)}
+                            placeholder="113.5"
+                          />
+                        </div>
+                      </div>
 
-    <div className="space-y-2">
-      <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest flex justify-between">
-        <span>{t.area_size} (Ha)</span>
-        <span className="text-emerald-500">*</span>
-      </label>
-      <input
-        type="number"
-        required
-        min="1"
-        className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-        value={area}
-        onChange={(e) => setArea(e.target.value)}
-        placeholder="e.g., 50000"
-      />
-    </div>
+                      <div className="space-y-2">
+                        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest flex justify-between">
+                          <span>{t.area_size} (Ha)</span>
+                          <span className="text-emerald-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                          value={area}
+                          onChange={(e) => setArea(e.target.value)}
+                          placeholder="e.g., 50000"
+                        />
+                      </div>
                       <div className="p-5 rounded-2xl border border-emerald-100 bg-white shadow-sm space-y-6 transition-all duration-300 hover:shadow-md">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -1044,7 +1087,7 @@ export default function ProductsPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-emerald-50">
                   <div>
-                    <p className="text-[11px] font-bold tracking-widest uppercase text-emerald-900/40 mb-1">
+                    <p className="text-[12px] font-extrabold tracking-widest uppercase text-emerald-950 mb-2">
                       {isId ? "Skor kelayakan indikatif (ICPFS)" : "Indicative score (ICPFS)"}
                     </p>
                     <div className="flex items-baseline gap-1.5">
@@ -1059,83 +1102,98 @@ export default function ProductsPage() {
                   </span>
                 </div>
 
-                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                  <Metric label="AGB" value={formatNumber(results.agb_ton)} unit="t" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                  <Metric label="AGB" value={formatNumber(results.agb_ton)} unit="t" icon={Trees} />
                   <Metric
                     label={isId ? "Cadangan karbon" : "Carbon stock"}
                     value={formatNumber(results.carbon_stock_tc)}
                     unit="tC"
+                    icon={Leaf}
                   />
-                  <Metric label="CO₂e" value={formatNumber(results.co2e_ton)} unit="t" />
+                  <Metric label="CO₂e" value={formatNumber(results.co2e_ton)} unit="t" icon={Wind} />
                   <Metric
                     label={isId ? "Kredit (ACC)" : "Total credits"}
                     value={formatNumber(results.acc_total_credits)}
                     unit="t"
+                    icon={TrendingUp}
                   />
-                  <Metric label="Gross Revenue" value={formatCurrency(results.gross_revenue_usd)} />
+                  <Metric label="Gross Revenue" value={formatCurrency(results.gross_revenue_usd)} icon={CircleDollarSign} />
                   <Metric
                     label={isId ? "Total biaya" : "Total cost"}
                     value={formatCurrency(
                       results.cost_breakdown?.total_cost_usd ?? results.total_cost_usd
                     )}
+                    icon={Wallet}
                   />
                   <Metric
                     label="Net Revenue"
                     value={formatCurrency(results.net_revenue_usd)}
                     highlight
+                    icon={LineChart}
                   />
                 </div>
 
-                                {results.component_scores && (
+                {results.component_scores && (
                   <div className="p-6 md:p-8 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100">
-                    <p className="text-[11px] font-bold text-emerald-900/70 uppercase tracking-widest mb-5">
+                    <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-5">
                       {isId ? "Komponen skor" : "Score components"}
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       {[
-                        { k: "carbon_score", l: isId ? "Karbon" : "Carbon" },
-                        { k: "legality_score", l: isId ? "Legal" : "Legal" },
-                        { k: "biodiversity_score", l: isId ? "Bio" : "Bio" },
-                        { k: "social_score", l: isId ? "Sosial" : "Social" },
-                        { k: "economy_score", l: isId ? "Ekonomi" : "Economy" },
-                      ].map((c) => (
-                        <div
-                          key={c.k}
-                          className="p-4 rounded-[1.25rem] bg-white border border-emerald-100/60 text-center"
-                        >
-                          <p className="text-[10px] font-bold tracking-widest uppercase text-emerald-900/40 mb-1">
-                            {c.l}
-                          </p>
-                          <p className="text-xl font-extrabold text-emerald-950">
-                            {Number(results.component_scores[c.k] ?? 0).toFixed(0)}
-                          </p>
-                        </div>
-                      ))}
+                        { k: "carbon_score", l: isId ? "Karbon" : "Carbon", ic: Leaf, color: "text-emerald-500" },
+                        { k: "legality_score", l: isId ? "Legal" : "Legal", ic: Scale, color: "text-amber-500" },
+                        { k: "biodiversity_score", l: isId ? "Bio" : "Bio", ic: Sprout, color: "text-green-500" },
+                        { k: "social_score", l: isId ? "Sosial" : "Social", ic: Users, color: "text-sky-500" },
+                        { k: "economy_score", l: isId ? "Ekonomi" : "Economy", ic: CircleDollarSign, color: "text-indigo-500" },
+                      ].map((c) => {
+                        const ScoreIcon = c.ic;
+                        return (
+                          <div
+                            key={c.k}
+                            className="p-4 rounded-[1.25rem] bg-white border border-emerald-100/60 text-center shadow-sm hover:shadow-md transition-all relative overflow-hidden group hover:-translate-y-1"
+                          >
+                            <div className="absolute inset-0 bg-emerald-50/0 group-hover:bg-emerald-50/50 transition-colors duration-300" />
+                            <div className="relative z-10 flex flex-col items-center">
+                              <ScoreIcon className={`w-5 h-5 mb-2 ${c.color} opacity-80`} />
+                              <p className="text-[11px] font-extrabold tracking-widest uppercase text-emerald-900 mb-1">
+                                {c.l}
+                              </p>
+                              <p className="text-2xl font-extrabold text-emerald-950">
+                                {Number(results.component_scores[c.k] ?? 0).toFixed(0)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
                 {results.cost_breakdown && (
                   <div className="p-6 md:p-8 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100">
-                    <p className="text-[11px] font-bold text-emerald-900/70 uppercase tracking-widest mb-5">
+                    <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-5">
                       {isId ? "Rincian biaya" : "Cost breakdown"}
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Metric
                         label={isId ? "Pengembangan" : "Development"}
                         value={formatCurrency(results.cost_breakdown.development_cost_usd)}
+                        icon={TrendingUp}
                       />
                       <Metric
                         label="MRV"
                         value={formatCurrency(results.cost_breakdown.mrv_cost_usd)}
+                        icon={BarChart3}
                       />
                       <Metric
                         label={isId ? "Validasi" : "Validation"}
                         value={formatCurrency(results.cost_breakdown.validation_cost_usd)}
+                        icon={ShieldCheck}
                       />
                       <Metric
                         label={isId ? "Operasional" : "Operational"}
                         value={formatCurrency(results.cost_breakdown.operational_cost_usd)}
+                        icon={Activity}
                       />
                     </div>
                   </div>
@@ -1145,61 +1203,61 @@ export default function ProductsPage() {
                   typeof results.spatial_overlay_layers === "object" &&
                   Object.keys(results.spatial_overlay_layers).length > 0 && (
                     <div className="p-6 md:p-8 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100">
-                      <p className="text-[11px] font-bold text-emerald-900/70 uppercase tracking-widest mb-5">
+                      <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-5">
                         {isId ? "Lapisan overlay spasial" : "Spatial overlay layers"}
                       </p>
-                            <ul className="space-y-3">
-        {Object.entries(results.spatial_overlay_layers).map(([key, val]) => {
-          const label = key.replace(/_/g, " ");
-          let displayValue = "—";
-          let fungsi = "";
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {Object.entries(results.spatial_overlay_layers)
+                          .filter(([key]) => !key.toLowerCase().includes("slop"))
+                          .map(([key, val]) => {
+                            const label = key.replace(/^\d+_/, "").replace(/_/g, " ");
+                            let displayValue = "—";
+                            let fungsi = "";
 
-          if (val != null && typeof val === "object" && !Array.isArray(val)) {
-            const obj = val as { value?: unknown; fungsi?: string };
-            if (obj.value !== undefined && obj.value !== null) {
-              displayValue =
-                typeof obj.value === "boolean"
-                  ? obj.value
-                    ? isId
-                      ? "Ya"
-                      : "Yes"
-                    : isId
-                    ? "Tidak"
-                    : "No"
-                  : String(obj.value);
-            }
-            if (obj.fungsi) fungsi = String(obj.fungsi);
-          } else if (val != null) {
-            displayValue = String(val);
-          }
+                            if (val != null && typeof val === "object" && !Array.isArray(val)) {
+                              const obj = val as { value?: unknown; fungsi?: string };
+                              if (obj.value !== undefined && obj.value !== null) {
+                                displayValue =
+                                  typeof obj.value === "boolean"
+                                    ? obj.value
+                                      ? isId ? "Ya" : "Yes"
+                                      : isId ? "Tidak" : "No"
+                                    : String(obj.value);
+                              }
+                              if (obj.fungsi) fungsi = String(obj.fungsi);
+                            } else if (val != null) {
+                              displayValue = String(val);
+                            }
 
-          return (
-            <li
-              key={key}
-              className="text-[14px] text-emerald-900/80 font-medium flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
-            >
-              <span className="capitalize text-emerald-900/60 shrink-0">
-                {label}
-              </span>
-              <span className="text-left sm:text-right font-semibold text-emerald-950">
-                {displayValue}
-                {fungsi ? (
-                  <span className="block text-[12px] font-medium text-emerald-900/50 mt-0.5">
-                    {fungsi}
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                            return (
+                              <div
+                                key={key}
+                                className="bg-white border border-emerald-100 p-4 rounded-[1rem] shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                              >
+                                <span className="capitalize text-[12px] font-extrabold text-emerald-900 tracking-widest uppercase mb-1">
+                                  {label}
+                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-[15px] font-extrabold text-emerald-950">
+                                    {displayValue}
+                                  </span>
+                                  {fungsi && (
+                                    <span className="text-[12px] font-medium text-emerald-700/70 mt-1 bg-emerald-50 self-start px-2 py-0.5 rounded-md">
+                                      {fungsi}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
                     </div>
                   )}
 
                 <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-stretch">
                   {results.geometry && (
                     <div className="h-full flex flex-col">
-                      <p className="text-[11px] font-bold text-emerald-900/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <Map className="w-4 h-4 text-emerald-500" />
                         {isId ? "Pemetaan Spasial" : "Spatial Mapping"}
                       </p>
@@ -1213,7 +1271,7 @@ export default function ProductsPage() {
                   )}
                   {results.recommendations?.length > 0 && (
                     <div className="h-full flex flex-col p-6 md:p-8 bg-emerald-50/50 rounded-[1.5rem] border border-emerald-100 hover:shadow-sm transition-all duration-300">
-                      <p className="text-[11px] font-bold text-emerald-900/70 uppercase tracking-widest mb-5">
+                      <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-5">
                         {t.recommendations}
                       </p>
                       <ul className="space-y-4">
@@ -1241,10 +1299,13 @@ export default function ProductsPage() {
                     <Save className="w-5 h-5" />
                     {isSaving ? (isId ? "Menyimpan…" : "Saving…") : t.save}
                   </button>
+                  
+                  {/* TOMBOL PDF TIDAK LAGI DI-DISABLE OLEH isOfficiallySaved */}
                   <button
                     type="button"
                     onClick={handleDownloadPDF}
-                    className="flex-1 px-6 py-4 bg-white border border-emerald-200/80 text-emerald-800 text-[15px] font-bold rounded-2xl flex justify-center items-center gap-2 hover:bg-emerald-50 transition-all duration-300 shadow-sm active:scale-95"
+                    disabled={isSaving}
+                    className="flex-1 px-6 py-4 bg-white border border-emerald-200/80 text-emerald-800 text-[15px] font-bold rounded-2xl flex justify-center items-center gap-2 hover:bg-emerald-50 transition-all duration-300 shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-white"
                   >
                     <Download className="w-5 h-5" />
                     {t.download_pdf}
@@ -1264,43 +1325,57 @@ function Metric({
   value,
   unit,
   highlight = false,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   unit?: string;
   highlight?: boolean;
+  icon?: any;
 }) {
   return (
     <div
-      className={`p-5 md:p-6 rounded-[1.5rem] border transition-all duration-300 ease-out flex flex-col justify-center hover:-translate-y-1.5 ${
+      className={`relative p-5 md:p-6 rounded-[1.5rem] border transition-all duration-300 ease-out flex flex-col justify-center hover:-translate-y-1.5 overflow-hidden ${
         highlight
-          ? "bg-emerald-50/80 border-emerald-200/50 shadow-sm hover:shadow-[0_8px_30px_-12px_rgba(16,185,129,0.3)]"
-          : "bg-white border-emerald-100/60 shadow-sm hover:shadow-[0_8px_30px_-12px_rgba(16,185,129,0.2)]"
+          ? "bg-gradient-to-br from-emerald-600 to-emerald-800 border-emerald-500 shadow-lg shadow-emerald-900/20 text-white"
+          : "bg-white border-emerald-100/60 shadow-sm hover:shadow-md text-emerald-950"
       }`}
     >
-      <p
-        className={`text-[10px] md:text-[11px] font-bold tracking-widest uppercase mb-2 ${
-          highlight ? "text-emerald-700/60" : "text-emerald-900/40"
-        }`}
-      >
-        {label}
-      </p>
-      <p
-        className={`text-[20px] sm:text-[24px] md:text-[28px] font-extrabold leading-tight break-words ${
-          highlight ? "text-emerald-900" : "text-emerald-950"
-        }`}
-      >
-        {value}
-        {unit && (
-          <span
-            className={`text-[20px] font-bold ml-1.5 ${
-              highlight ? "text-emerald-800" : "text-emerald-800"
+      {highlight && (
+        <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+      )}
+      <div className="flex items-center justify-between mb-3 relative z-10">
+        <p
+          className={`text-[11px] md:text-[12px] font-extrabold tracking-widest uppercase ${
+            highlight ? "text-emerald-50" : "text-emerald-900"
+          }`}
+        >
+          {label}
+        </p>
+        {Icon && (
+          <Icon
+            className={`w-5 h-5 ${
+              highlight ? "text-emerald-200" : "text-emerald-500"
             }`}
-          >
-            {unit}
-          </span>
+          />
         )}
-      </p>
+      </div>
+      <div className="relative z-10">
+        <p
+          className={`text-[22px] sm:text-[26px] font-extrabold leading-tight break-words`}
+        >
+          {value}
+          {unit && (
+            <span
+              className={`text-[18px] font-bold ml-1.5 ${
+                highlight ? "text-emerald-200" : "text-emerald-700"
+              }`}
+            >
+              {unit}
+            </span>
+          )}
+        </p>
+      </div>
     </div>
   );
 }
