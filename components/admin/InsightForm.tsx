@@ -11,12 +11,18 @@ import {
   Tag,
   Star,
   UserCircle,
-  ChevronDown
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
 import ImageCropModal from "@/components/ImageCropModal";
-import RichTextEditor from "@/components/admin/RichTextEditor";
+import ContentBlocksEditor, {
+  parseBlocks,
+  serializeBlocks,
+  type ContentBlock,
+} from "@/components/admin/ContentBlocksEditor";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 
 function resolveImageUrl(url?: string | null) {
@@ -66,20 +72,17 @@ export default function InsightForm({ mode, initial }: Props) {
 
   const [title, setTitle] = useState(initial?.title || "");
   const [titleEn, setTitleEn] = useState(initial?.title_en || "");
-  const [content, setContent] = useState(initial?.content || "");
-  const [contentEn, setContentEn] = useState(initial?.content_en || "");
+  const [blocks, setBlocks] = useState<ContentBlock[]>(() =>
+    parseBlocks(initial?.content, initial?.content_en),
+  );
   const [topic, setTopic] = useState(initial?.topic || "");
   const [isFeatured, setIsFeatured] = useState(!!initial?.is_featured);
   const [topics, setTopics] = useState<TopicOption[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(true);
-  
-  const [topicOpen, setTopicOpen] = useState(false); 
-  
-  // STATE BARU: Untuk mengatur tab bahasa mana yang sedang aktif di Rich Text Editor
+  const [topicOpen, setTopicOpen] = useState(false);
   const [activeLangTab, setActiveLangTab] = useState<"id" | "en">("id");
-
   const [preview, setPreview] = useState<string | null>(
-    resolveImageUrl(initial?.image_url)
+    resolveImageUrl(initial?.image_url),
   );
   const [file, setFile] = useState<File | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -87,21 +90,22 @@ export default function InsightForm({ mode, initial }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [authorName, setAuthorName] = useState("Satubumi Team");
+  const [confirmDeleteCover, setConfirmDeleteCover] = useState(false);
+  const [removingCover, setRemovingCover] = useState(false);
 
   const token = () => localStorage.getItem("access_token");
-  
   const inputCls =
-    "w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-[15px] font-semibold text-slate-800 transition-all placeholder:text-slate-400";
-  const labelCls = "block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2";
+    "w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-[15px] font-semibold text-slate-800 transition-all placeholder:text-slate-400";
+  const labelCls =
+    "block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2";
 
   useEffect(() => {
-    if (success || error) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
+    if (!success && !error) return;
+    const t = setTimeout(() => {
+      setSuccess(null);
+      setError(null);
+    }, 5000);
+    return () => clearTimeout(t);
   }, [success, error]);
 
   useEffect(() => {
@@ -114,11 +118,9 @@ export default function InsightForm({ mode, initial }: Props) {
         });
         if (!res.ok) return;
         const me = await res.json();
-        if (me.full_name && String(me.full_name).trim()) {
-          setAuthorName(String(me.full_name).trim());
-        }
+        if (me.full_name?.trim()) setAuthorName(me.full_name.trim());
       } catch {
-        /* default */
+        /* ignore */
       }
     };
     loadMe();
@@ -133,9 +135,8 @@ export default function InsightForm({ mode, initial }: Props) {
         const data = await res.json();
         const list: TopicOption[] = Array.isArray(data) ? data : [];
         setTopics(list);
-        
         if (!topic && list.length > 0) {
-          const match = list.find((t) => t.slug === initial?.topic);
+          const match = list.find((x) => x.slug === initial?.topic);
           setTopic(match?.slug || list[0].slug);
         }
       } catch {
@@ -156,8 +157,58 @@ export default function InsightForm({ mode, initial }: Props) {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok)
-      throw new Error(isId ? "Upload gambar gagal" : "Image upload failed");
+    if (!res.ok) throw new Error(isId ? "Upload gambar gagal" : "Image upload failed");
+  };
+
+  const uploadMedia = async (articleId: number, f: File) => {
+    const fd = new FormData();
+    fd.append("file", f);
+    const res = await fetch(`${API_URL}/articles/${articleId}/media`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token()}` },
+      body: fd,
+    });
+    if (!res.ok) {
+      throw new Error(isId ? "Upload gambar isi gagal" : "Inline image upload failed");
+    }
+    const data = await res.json();
+    return data.url as string;
+  };
+
+  const flushImageBlocks = async (articleId: number, list: ContentBlock[]) => {
+    const next: ContentBlock[] = [];
+    for (const b of list) {
+      if (b.type === "image" && b.file) {
+        const url = await uploadMedia(articleId, b.file);
+        next.push({ ...b, url, file: undefined });
+      } else {
+        next.push(b);
+      }
+    }
+    return next;
+  };
+
+  const handleDeleteCover = async () => {
+    setRemovingCover(true);
+    try {
+      if (mode === "edit" && initial?.id && initial?.image_url && !file) {
+        const res = await fetch(`${API_URL}/articles/${initial.id}/image`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token()}` },
+        });
+        if (!res.ok && res.status !== 404) {
+          throw new Error(isId ? "Gagal hapus cover" : "Failed to delete cover");
+        }
+      }
+      setPreview(null);
+      setFile(null);
+      setConfirmDeleteCover(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error");
+      setConfirmDeleteCover(false);
+    } finally {
+      setRemovingCover(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,7 +217,7 @@ export default function InsightForm({ mode, initial }: Props) {
       setError(
         isId
           ? "Topik belum tersedia. Buat di menu Topic Insight."
-          : "Topic unavailable. Create one under Insight Topics."
+          : "Topic unavailable. Create one under Insight Topics.",
       );
       return;
     }
@@ -178,8 +229,8 @@ export default function InsightForm({ mode, initial }: Props) {
         category: "insight",
         title: title.trim() || "Insight",
         title_en: titleEn.trim() || null,
-        content: content || "-",
-        content_en: contentEn || null,
+        content: serializeBlocks(blocks, "id") || "-",
+        content_en: serializeBlocks(blocks, "en") || null,
         status: "published",
         topic,
         is_featured: isFeatured,
@@ -200,10 +251,8 @@ export default function InsightForm({ mode, initial }: Props) {
           },
           body: JSON.stringify(payload),
         });
-        if (!res.ok)
-          throw new Error(isId ? "Gagal membuat insight" : "Create failed");
-        const saved = await res.json();
-        id = saved.id;
+        if (!res.ok) throw new Error(isId ? "Gagal membuat insight" : "Create failed");
+        id = (await res.json()).id;
       } else if (id) {
         const res = await fetch(`${API_URL}/articles/${id}`, {
           method: "PUT",
@@ -213,11 +262,29 @@ export default function InsightForm({ mode, initial }: Props) {
           },
           body: JSON.stringify(payload),
         });
-        if (!res.ok)
-          throw new Error(isId ? "Gagal menyimpan" : "Update failed");
+        if (!res.ok) throw new Error(isId ? "Gagal menyimpan" : "Update failed");
       }
 
       if (file && id) await uploadImage(id, file);
+
+      if (id) {
+        const ready = await flushImageBlocks(id, blocks);
+        setBlocks(ready);
+        const putRes = await fetch(`${API_URL}/articles/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token()}`,
+          },
+          body: JSON.stringify({
+            content: serializeBlocks(ready, "id"),
+            content_en: serializeBlocks(ready, "en"),
+          }),
+        });
+        if (!putRes.ok) {
+          throw new Error(isId ? "Gagal menyimpan gambar isi" : "Failed saving inline images");
+        }
+      }
 
       setSuccess(isId ? "Insight berhasil disimpan!" : "Insight saved successfully!");
       setTimeout(() => router.push(`/${lang}/admin/insights`), 1200);
@@ -230,7 +297,7 @@ export default function InsightForm({ mode, initial }: Props) {
 
   return (
     <div className="font-sans pb-8">
-      {/* MODAL ERROR / SUCCESS */}
+      {/* GLOBAL POPUP MODAL NOTIFICATION (SUCCESS/ERROR) */}
       {(error || success) && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
@@ -247,7 +314,6 @@ export default function InsightForm({ mode, initial }: Props) {
                   {error}
                 </p>
                 <button
-                  type="button"
                   onClick={() => setError(null)}
                   className="w-full py-4 bg-rose-50 border border-rose-100 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 hover:text-rose-700 transition-all duration-300 active:scale-95"
                 >
@@ -267,7 +333,6 @@ export default function InsightForm({ mode, initial }: Props) {
                   {success}
                 </p>
                 <button
-                  type="button"
                   onClick={() => setSuccess(null)}
                   className="w-full py-4 bg-emerald-700 text-white font-bold rounded-2xl hover:bg-emerald-800 transition-all duration-300 shadow-md shadow-emerald-950/20 active:scale-95"
                 >
@@ -279,12 +344,58 @@ export default function InsightForm({ mode, initial }: Props) {
         </div>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white border border-slate-200/80 rounded-[2rem] p-6 md:p-10 shadow-sm"
-      >
-        {/* AUTHOR BADGE */}
-        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl mb-8 w-max shadow-sm">
+      {/* CONFIRMATION POPUP MODAL (COVER IMAGE) */}
+      {confirmDeleteCover && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            <div className="p-10 text-center">
+              <div className="w-20 h-20 bg-rose-50 rounded-[1.8rem] flex items-center justify-center mx-auto mb-6 border border-rose-100 relative">
+                <div className="absolute inset-0 rounded-[1.8rem] border-2 border-rose-200 animate-ping opacity-50 duration-1000" />
+                <AlertTriangle className="w-10 h-10 text-rose-500 relative z-10" />
+              </div>
+
+              <h3 className="text-2xl font-extrabold text-slate-800 mb-3 tracking-tight">
+                {isId ? "Hapus Foto Cover?" : "Delete Cover Image?"}
+              </h3>
+
+              <p className="text-slate-500 text-[14.5px] mb-8 leading-relaxed px-2">
+                {isId
+                  ? "Apakah Anda yakin ingin menghapus foto cover utama ini?"
+                  : "Are you sure you want to delete this main cover image?"}
+              </p>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteCover(false)}
+                  disabled={removingCover}
+                  className="flex-1 py-4 bg-slate-50 border border-slate-200 text-slate-600 text-[14.5px] font-bold rounded-2xl hover:bg-slate-100 transition-colors disabled:opacity-50 active:scale-95"
+                >
+                  {isId ? "Batalkan" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteCover}
+                  disabled={removingCover}
+                  className="flex-1 py-4 bg-rose-600 text-white text-[14.5px] font-bold rounded-2xl hover:bg-rose-700 disabled:opacity-80 flex items-center justify-center gap-2 transition-all duration-300 shadow-md shadow-rose-600/20 active:scale-95"
+                >
+                  {removingCover ? (
+                    <div className="w-5 h-5 border-2 border-rose-200 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      {isId ? "Ya, Hapus" : "Yes, Delete"}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="bg-slate-50 border border-slate-200/50 rounded-[2rem] p-6 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
+        <div className="flex items-center gap-3 bg-white border border-slate-200 px-4 py-3 rounded-xl mb-8 w-max shadow-sm">
           <UserCircle className="w-5 h-5 text-emerald-600" />
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
@@ -296,75 +407,86 @@ export default function InsightForm({ mode, initial }: Props) {
           </div>
         </div>
 
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-3">
+            <label className={labelCls}>{isId ? "Gambar Utama (16:9)" : "Cover Image (16:9)"}</label>
+            <span className="text-[11px] font-bold px-2.5 py-1 bg-white border border-slate-200 rounded-full text-slate-500 shadow-sm">Ratio: 16:9</span>
+          </div>
+          {preview ? (
+            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-4 border-white shadow-lg group bg-slate-100">
+              <img src={preview} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/30 flex items-start justify-end gap-2 p-4 opacity-0 group-hover:opacity-100 transition-colors duration-300">
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 text-sm font-bold rounded-xl cursor-pointer shadow-lg hover:bg-white hover:scale-105 transition-all">
+                  <ImagePlus className="w-4 h-4" />
+                  {isId ? "Ganti" : "Change"}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setCropSrc(URL.createObjectURL(f));
+                    e.target.value = "";
+                  }} />
+                </label>
+                <button type="button" onClick={() => setConfirmDeleteCover(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600/90 text-white text-sm font-bold rounded-xl shadow-lg hover:bg-rose-600 hover:scale-105 transition-all">
+                  <Trash2 className="w-4 h-4" />
+                  {isId ? "Hapus" : "Delete"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full p-8 border-2 border-dashed border-slate-300 rounded-2xl bg-white hover:bg-emerald-50 hover:border-emerald-300 cursor-pointer group transition-all">
+              <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mb-3 text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 transition-all shadow-sm">
+                 <ImagePlus className="w-5 h-5" />
+              </div>
+              <span className="text-[13px] font-bold text-slate-700 mb-1">{isId ? "Pilih & Crop Gambar Cover" : "Choose & Crop Cover"}</span>
+              <span className="text-[11px] font-medium text-slate-400">
+                JPG, PNG, WEBP
+              </span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setCropSrc(URL.createObjectURL(f));
+                e.target.value = "";
+              }} />
+            </label>
+          )}
+        </div>
+
         <div className="grid md:grid-cols-2 gap-6 mb-6">
           <div>
             <label className={labelCls}>Judul (ID) <span className="text-rose-500">*</span></label>
-            <input
-              className={inputCls}
-              placeholder="Masukkan judul insight..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
+            <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} required />
           </div>
           <div>
             <label className={labelCls}>Title (EN)</label>
-            <input
-              className={inputCls}
-              placeholder="Enter insight title..."
-              value={titleEn}
-              onChange={(e) => setTitleEn(e.target.value)}
-            />
+            <input className={inputCls} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} />
           </div>
         </div>
 
-        {/* Topic + Featured Row */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          
           <div className="relative group">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                Kategori Topik <span className="text-rose-500">*</span>
-              </label>
-              <Link
-                href={`/${lang}/admin/insight-topics`}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700"
-              >
-                <Tag className="w-3 h-3" />
+              <label className={labelCls}>Kategori Topik <span className="text-rose-500">*</span></label>
+              <Link href={`/${lang}/admin/insight-topics`} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700">
                 {isId ? "Kelola Topik" : "Manage Topics"}
               </Link>
             </div>
-            
             <div
               onClick={() => !topicsLoading && topics.length > 0 && setTopicOpen(!topicOpen)}
-              className={`w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 flex justify-between items-center transition-all duration-300 ${
-                topicsLoading || topics.length === 0
-                  ? "opacity-60 cursor-not-allowed"
-                  : "cursor-pointer hover:border-emerald-500 hover:bg-white group-hover:ring-4 group-hover:ring-emerald-500/10"
-              }`}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white flex justify-between cursor-pointer hover:border-emerald-500 group-hover:ring-4 group-hover:ring-emerald-500/10 shadow-sm transition-all"
             >
               <span className="font-semibold text-[15px] text-slate-800">
-                {topicsLoading
-                  ? (isId ? "Memuat..." : "Loading...")
-                  : topics.length === 0
-                  ? (isId ? "Belum ada topik" : "No topics available")
-                  : topics.find((t) => t.slug === topic)
+                {topics.find((t) => t.slug === topic)
                   ? isId
                     ? topics.find((t) => t.slug === topic)?.label_id
                     : topics.find((t) => t.slug === topic)?.label_en
-                  : (isId ? "Pilih Topik" : "Select Topic")}
+                  : isId
+                    ? "Pilih Topik"
+                    : "Select Topic"}
               </span>
-              <ChevronDown
-                className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${
-                  topicOpen ? "rotate-180 text-emerald-500" : "group-hover:text-emerald-500"
-                }`}
-              />
+              <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${topicOpen ? "rotate-180 text-emerald-500" : "group-hover:text-emerald-500"}`} />
             </div>
-
             {topicOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setTopicOpen(false)} />
-                <div className="absolute z-40 mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-xl py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute z-40 mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
                   {topics.map((t) => (
                     <div
                       key={t.slug}
@@ -372,11 +494,7 @@ export default function InsightForm({ mode, initial }: Props) {
                         setTopic(t.slug);
                         setTopicOpen(false);
                       }}
-                      className={`px-5 py-3.5 text-[14.5px] cursor-pointer transition-colors ${
-                        topic === t.slug
-                          ? "bg-emerald-50 text-emerald-700 font-bold"
-                          : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                      }`}
+                      className={`px-5 py-3.5 text-[14.5px] cursor-pointer transition-colors ${topic === t.slug ? "bg-emerald-50 text-emerald-700 font-bold" : "hover:bg-slate-50 text-slate-600 font-medium"}`}
                     >
                       {isId ? t.label_id : t.label_en}
                     </div>
@@ -387,120 +505,35 @@ export default function InsightForm({ mode, initial }: Props) {
           </div>
 
           <div className="flex items-end">
-            <label 
-              className={`flex items-center justify-between w-full px-5 py-3 rounded-xl border-2 cursor-pointer transition-all ${
-                isFeatured ? "bg-amber-50 border-amber-300" : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
-              }`}
-            >
+            <label className={`flex items-center justify-between w-full px-5 py-3 rounded-xl border-2 cursor-pointer transition-all shadow-sm ${isFeatured ? "bg-amber-50 border-amber-300" : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}>
               <div className="flex items-center gap-3">
                 <Star className={`w-5 h-5 ${isFeatured ? "text-amber-500 fill-amber-500" : "text-slate-400"}`} />
-                <span className={`text-[14px] font-bold ${isFeatured ? "text-amber-800" : "text-slate-600"}`}>
-                  {isId ? "Jadikan Sorotan (Top Insight)" : "Set as Top Insight"}
-                </span>
+                <span className={`text-[14px] font-bold ${isFeatured ? "text-amber-800" : "text-slate-600"}`}>{isId ? "Jadikan Sorotan (Top Insight)" : "Set as Top Insight"}</span>
               </div>
-              <input
-                type="checkbox"
-                checked={isFeatured}
-                onChange={(e) => setIsFeatured(e.target.checked)}
-                className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer"
-              />
+              <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
             </label>
           </div>
         </div>
 
-        {/* ================= TABS KONTEN FULL WIDTH ================= */}
         <div className="mb-10 mt-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <label className={`${labelCls} !mb-0`}>
-              {isId ? "Konten Artikel (Layar Penuh)" : "Article Content"} <span className="text-rose-500">*</span>
-            </label>
-            
-            {/* Tombol Tab Switcher */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-              <button
-                type="button"
-                onClick={() => setActiveLangTab("id")}
-                className={`px-5 py-2 text-[12px] font-extrabold rounded-lg transition-all duration-200 ${
-                  activeLangTab === "id"
-                    ? "bg-white text-emerald-800 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                }`}
-              >
-                🇮🇩 Indonesia (ID)
+            <label className={`${labelCls} !mb-0`}>{isId ? "Isi artikel" : "Article content"} <span className="text-rose-500">*</span></label>
+            <div className="flex items-center bg-slate-200/70 p-1 rounded-xl border border-slate-200/80">
+              <button type="button" onClick={() => setActiveLangTab("id")} className={`px-5 py-2 text-[12px] font-extrabold rounded-lg transition-all duration-200 ${activeLangTab === "id" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}>
+                Indonesia (ID)
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveLangTab("en")}
-                className={`px-5 py-2 text-[12px] font-extrabold rounded-lg transition-all duration-200 ${
-                  activeLangTab === "en"
-                    ? "bg-white text-emerald-800 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-                }`}
-              >
-                🇬🇧 English (EN)
+              <button type="button" onClick={() => setActiveLangTab("en")} className={`px-5 py-2 text-[12px] font-extrabold rounded-lg transition-all duration-200 ${activeLangTab === "en" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}>
+                English (EN)
               </button>
             </div>
           </div>
-
-          {/* Wrapper untuk mempertahankan status Editor (Sembunyikan yang tidak aktif dengan class "hidden") */}
-          <div className={activeLangTab === "id" ? "block animate-in fade-in duration-300" : "hidden"}>
-            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:border-emerald-500 transition-all shadow-sm">
-              <RichTextEditor 
-                value={content} 
-                onChange={setContent} 
-                placeholder="Ketik isi artikel dalam Bahasa Indonesia di sini..." 
-              />
-            </div>
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-2 md:p-4 shadow-sm">
+            <ContentBlocksEditor blocks={blocks} onChange={setBlocks} lang={activeLangTab} />
           </div>
-
-          <div className={activeLangTab === "en" ? "block animate-in fade-in duration-300" : "hidden"}>
-            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 focus-within:ring-4 focus-within:ring-emerald-500/10 focus-within:border-emerald-500 transition-all shadow-sm">
-              <RichTextEditor 
-                value={contentEn} 
-                onChange={setContentEn} 
-                placeholder="Type the English article content here..." 
-              />
-            </div>
-          </div>
-        </div>
-        {/* ================= END TABS ================= */}
-
-        <div className="mb-10">
-          <label className={labelCls}>
-            {isId ? "Gambar Utama (16:9)" : "Cover Image (16:9)"}
-          </label>
-          {preview ? (
-            <div className="relative aspect-video max-w-xl rounded-[1.5rem] overflow-hidden border-4 border-slate-100 shadow-md mb-4 bg-slate-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={preview}
-                alt=""
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : null}
-          <label className="inline-flex items-center gap-2.5 px-6 py-3.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl cursor-pointer hover:bg-emerald-100 transition-colors border border-emerald-200">
-            <ImagePlus className="w-5 h-5" />
-            {isId ? "Pilih atau Ganti Gambar" : "Choose / change image"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) setCropSrc(URL.createObjectURL(f));
-                e.target.value = "";
-              }}
-            />
-          </label>
         </div>
 
         <div className="pt-6 border-t border-slate-200/80">
-          <button
-            type="submit"
-            disabled={saving || topicsLoading || topics.length === 0}
-            className="w-full py-4 bg-emerald-800 text-white text-[15px] font-extrabold rounded-xl flex items-center justify-center gap-2.5 disabled:opacity-50 hover:bg-emerald-950 transition-all shadow-md shadow-emerald-950/20 active:scale-95"
-          >
+          <button type="submit" disabled={saving || topicsLoading || topics.length === 0} className="w-full py-4 bg-emerald-800 text-white text-[15px] font-extrabold rounded-xl flex items-center justify-center gap-2.5 disabled:opacity-50 hover:bg-emerald-950 transition-all shadow-md shadow-emerald-950/20 active:scale-95">
             {saving ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (

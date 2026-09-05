@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, Clock, ArrowUpRight, Tag, User as UserIcon } from "lucide-react";
 import ScrollReveal from "../../../../../components/ScrollReveal";
+import { parseBlocks } from "@/components/admin/ContentBlocksEditor";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
@@ -55,8 +56,14 @@ function stripHtml(html: string) {
     .trim();
 }
 
-function excerpt(content: string, max = 120) {
-  const plain = /<\/?[a-z]/i.test(content) ? stripHtml(content) : content;
+function excerptFromContent(content: string, max = 120) {
+  const blocks = parseBlocks(content);
+  const plain = blocks
+    .map((b) => (b.type === "text" ? stripHtml(b.htmlId || b.htmlEn || "") : ""))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return "";
   if (plain.length <= max) return plain;
   return plain.slice(0, max).trim() + "…";
 }
@@ -97,7 +104,7 @@ function RelatedCard({ item, lang, isId }: { item: Article; lang: string; isId: 
           {item.title}
         </h2>
         <p className="text-[13.5px] text-slate-600 font-medium leading-relaxed flex-grow line-clamp-3 mb-4">
-          {excerpt(item.content, 100)}
+          {excerptFromContent(item.content, 100)}
         </p>
         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
@@ -123,6 +130,7 @@ export default function InsightDetailPage() {
 
   const [article, setArticle] = useState<Article | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+  const [popularArticles, setPopularArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const viewedRef = useRef(false);
 
@@ -144,12 +152,19 @@ export default function InsightDetailPage() {
         setArticle(found);
 
         if (found) {
-          const others = list.filter((a) => a.slug !== slug && a.status === "published");
+          const publishedList = list.filter((a) => a.status === "published");
+          const others = publishedList.filter((a) => a.slug !== slug);
+          
+          // Set Related Articles
           const sameTopic = others.filter((a) => a.topic === found.topic);
           const diffTopic = others.filter((a) => a.topic !== found.topic);
-          
-          const combinedRelated = [...sameTopic, ...diffTopic].slice(0, 3);
-          setRelatedArticles(combinedRelated);
+          setRelatedArticles([...sameTopic, ...diffTopic].slice(0, 3));
+
+          // Set Popular Articles (Diurutkan berdasarkan view_count tertinggi)
+          const popular = [...others]
+            .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
+            .slice(0, 3);
+          setPopularArticles(popular);
         }
 
         if (found?.id && typeof window !== "undefined") {
@@ -213,7 +228,7 @@ export default function InsightDetailPage() {
         </p>
         <Link
           href={`/${lang}/insights`}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-50 transition-all"
         >
           <ArrowLeft className="w-4 h-4" />
           {isId ? "Kembali ke Artikel" : "Back to Articles"}
@@ -245,23 +260,30 @@ export default function InsightDetailPage() {
               </Link>
               
               <ScrollReveal>
-                <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white tracking-tight leading-[1.1] mb-6">
+                {/* PEMBARUAN: 
+                    - tracking-wide: Jarak antar huruf diperlebar
+                    - leading-[1.45]: Jarak antar baris diperlebar
+                    - lg:pr-12: Padding kanan agar teks terpotong turun ke bawah sebelum mendekati gambar 
+                */}
+                <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white tracking-wide leading-[1.45] lg:pr-12 mb-6 break-words">
                   {article.title}
                 </h1>
               </ScrollReveal>
             </div>
 
             {/* KANAN: Gambar Cover */}
-            <ScrollReveal delay="delay-100">
-              <div className="w-full aspect-[4/3] md:aspect-video lg:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 relative">
-                <img
-                  src={img}
-                  alt={article.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 to-transparent" />
-              </div>
-            </ScrollReveal>
+            <div className="w-full lg:mt-[52px]">
+              <ScrollReveal delay="delay-100">
+                <div className="w-full aspect-[4/3] md:aspect-video lg:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 relative">
+                  <img
+                    src={img}
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 to-transparent" />
+                </div>
+              </ScrollReveal>
+            </div>
 
           </div>
         </div>
@@ -274,110 +296,183 @@ export default function InsightDetailPage() {
           {/* KIRI: Teks Deskripsi (lg:col-span-8) */}
           <div className="lg:col-span-8">
             <ScrollReveal>
-              <div className="w-full">
-                {isHtml(article.content) ? (
-                  <div
-                    className="max-w-none text-slate-800 font-medium leading-[1.85] text-[17px] md:text-[18px]
-                               [&_p]:text-justify [&_p]:mb-6
-                               [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:text-slate-900 [&_h1]:mb-5 [&_h1]:mt-10
-                               [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mb-5 [&_h2]:mt-10
-                               [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mb-4 [&_h3]:mt-8
-                               [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-6 
-                               [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-6 
-                               [&_li]:mb-2 [&_li]:pl-1 [&_li]:text-left
-                               [&_strong]:font-bold [&_b]:font-bold
-                               [&_em]:italic [&_i]:italic
-                               [&_a]:text-emerald-600 [&_a]:underline hover:[&_a]:text-emerald-700"
-                    dangerouslySetInnerHTML={{
-                      __html: article.content,
-                    }}
-                  />
-                ) : (
-                  <div className="text-[17px] md:text-[18px] text-slate-800 font-medium leading-[1.85] text-justify">
-                    {article.content.split("\n").map((paragraph, idx) =>
-                      paragraph.trim() ? (
-                        <p key={idx} className="mb-6">
-                          {paragraph}
-                        </p>
-                      ) : null
-                    )}
-                  </div>
-                )}
+              <div className="w-full space-y-10">
+                {parseBlocks(article.content).map((block, idx) => {
+                  if (block.type === "image" && block.url) {
+                    const caption = block.captionId || block.captionEn || "";
+                    return (
+                      <figure key={idx} className="my-4">
+                        <div className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/70 bg-slate-100">
+                          <img
+                            src={resolveImageUrl(block.url) || block.url}
+                            alt={caption || article.title}
+                            className="w-full max-h-[520px] object-cover"
+                          />
+                        </div>
+                        {caption ? (
+                          <figcaption className="mt-3 text-center text-[13px] font-extrabold text-slate-700">
+                            {caption}
+                          </figcaption>
+                        ) : null}
+                      </figure>
+                    );
+                  }
+
+                  if (block.type === "text") {
+                    const html = block.htmlId || block.htmlEn || "";
+                    if (!html) return null;
+
+                    if (isHtml(html)) {
+                      return (
+                        <div
+                          key={idx}
+                          className="max-w-none text-slate-800 font-medium leading-[1.85] text-[17px] md:text-[18px]
+                                    [&_p]:text-justify [&_p]:mb-6
+                                    [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:text-slate-900 [&_h1]:mb-5 [&_h1]:mt-10
+                                    [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mb-5 [&_h2]:mt-10
+                                    [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mb-4 [&_h3]:mt-8
+                                    [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-6
+                                    [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-6
+                                    [&_li]:mb-2 [&_li]:pl-1 [&_li]:text-left
+                                    [&_strong]:font-bold [&_b]:font-bold
+                                    [&_em]:italic [&_i]:italic
+                                    [&_a]:text-emerald-600 [&_a]:underline hover:[&_a]:text-emerald-700"
+                          dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        className="text-[17px] md:text-[18px] text-slate-800 font-medium leading-[1.85] text-justify"
+                      >
+                        {html.split("\n").map((paragraph, pIdx) =>
+                          paragraph.trim() ? (
+                            <p key={pIdx} className="mb-6">
+                              {paragraph}
+                            </p>
+                          ) : null,
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })}
               </div>
             </ScrollReveal>
           </div>
 
-          {/* KANAN: Sidebar Deskripsi Info Artikel (lg:col-span-4) */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <ScrollReveal delay="delay-200">
-              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
-                
-                <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
-                  {isId ? "Informasi Artikel" : "Article Information"}
-                </h3>
+          {/* KANAN: Sidebar Deskripsi Info Artikel & Popular Insights (lg:col-span-4) */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-[110px] flex flex-col gap-6 h-fit">
+              
+              {/* Card 1: Informasi Artikel */}
+              <ScrollReveal delay="delay-200">
+                <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
+                  <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
+                    {isId ? "Informasi Artikel" : "Article Information"}
+                  </h3>
 
-                {/* Author Info (Box kotak besar) */}
-                <div className="flex flex-col mb-8">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm mb-5">
-                    {article.author_profile_image ? (
-                      <img
-                        src={resolveImageUrl(article.author_profile_image) || ""}
-                        alt={article.author || "Author"}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <UserIcon className="w-16 h-16 text-emerald-600/30" />
-                    )}
+                  {/* Author Info */}
+                  <div className="flex flex-col mb-8">
+                    <div className="w-full aspect-square rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm mb-5">
+                      {article.author_profile_image ? (
+                        <img
+                          src={resolveImageUrl(article.author_profile_image) || ""}
+                          alt={article.author || "Author"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <UserIcon className="w-16 h-16 text-emerald-600/30" />
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {article.author || "Satubumi Team"}
+                      </span>
+                      <span className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-2.5">
+                        {isId ? "Penulis" : "Author"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                      {article.author || "Satubumi Team"}
-                    </span>
-                    <span className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-2.5">
-                      {isId ? "Penulis" : "Author"}
-                    </span>
+
+                  {/* List Informasi Tambahan */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2.5 text-slate-500">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-[13px] font-bold">{isId ? "Tanggal Publish" : "Published Date"}</span>
+                      </div>
+                      <span className="text-[13.5px] font-bold text-slate-900">
+                        {formatDate(article.created_at, lang)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2.5 text-slate-500">
+                        <Eye className="w-4 h-4" />
+                        <span className="text-[13px] font-bold">{isId ? "Tayangan" : "Views"}</span>
+                      </div>
+                      <span className="text-[13.5px] font-bold text-slate-900">
+                        {article.view_count?.toLocaleString(isId ? "id-ID" : "en-US") || 0}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2.5 text-slate-500">
+                        <Tag className="w-4 h-4" />
+                        <span className="text-[13px] font-bold">{isId ? "Kategori" : "Category"}</span>
+                      </div>
+                      <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
+                        {topicLabel(article.topic, isId)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal>
+
+              {/* Card 2 - Popular Insights */}
+              {popularArticles.length > 0 && (
+                <ScrollReveal delay="delay-300">
+                  <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
+                    <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                      <h3 className="text-lg font-extrabold text-slate-900">
+                        {isId ? "Artikel Populer" : "Popular Insights"}
+                      </h3>
+                    </div>
                     
-                  </div>
-                </div>
-
-                {/* List Informasi Tambahan (Diubah menjadi lebih rapat) */}
-                <div className="flex flex-col gap-3">
-                  {/* Tanggal */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5 text-slate-500">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-[13px] font-bold">{isId ? "Tanggal Publish" : "Published Date"}</span>
+                    <div className="flex flex-col gap-5">
+                      {popularArticles.map((art) => (
+                        <Link
+                          key={art.id}
+                          href={`/${lang}/insights/${art.slug}`}
+                          className="group flex items-center gap-4 hover:-translate-y-0.5 transition-transform"
+                        >
+                          <div className="w-[84px] h-[84px] rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/50">
+                            <img
+                              src={resolveImageUrl(art.image_url) || "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=200&q=80"}
+                              alt={art.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-center">
+                            <h4 className="text-[13px] font-extrabold text-slate-900 leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                              {art.title}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                              <Clock className="w-3.5 h-3.5" />
+                              {formatDate(art.created_at, lang)}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-                    <span className="text-[13.5px] font-bold text-slate-900">
-                      {formatDate(article.created_at, lang)}
-                    </span>
                   </div>
-
-                  {/* Views */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2.5 text-slate-500">
-                      <Eye className="w-4 h-4" />
-                      <span className="text-[13px] font-bold">{isId ? "Tayangan" : "Views"}</span>
-                    </div>
-                    <span className="text-[13.5px] font-bold text-slate-900">
-                      {article.view_count?.toLocaleString(isId ? "id-ID" : "en-US") || 0}
-                    </span>
-                  </div>
-
-                  {/* Tag/Kategori */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2.5 text-slate-500">
-                      <Tag className="w-4 h-4" />
-                      <span className="text-[13px] font-bold">{isId ? "Kategori" : "Category"}</span>
-                    </div>
-                    <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
-                      {topicLabel(article.topic, isId)}
-                    </span>
-                  </div>
-                </div>
-
-              </div>
-            </ScrollReveal>
+                </ScrollReveal>
+              )}
+            </div>
           </div>
 
         </div>

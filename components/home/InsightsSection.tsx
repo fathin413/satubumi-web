@@ -10,6 +10,8 @@ interface Article {
   content: string;
   created_at?: string;
   views?: number;
+  view_count?: number;
+  is_featured?: boolean;
   author?: string | null;
   author_profile_image?: string | null;
 }
@@ -24,6 +26,30 @@ interface InsightsSectionProps {
   formatDate: (date?: string, isId?: boolean) => string;
 }
 
+function parseExcerpt(
+  content: string,
+  plainText: (s: string) => string,
+  maxLength = 100
+) {
+  let html = content || "";
+  try {
+    const data = JSON.parse(content);
+    if (Array.isArray(data) && data[0]?.type) {
+      html = data
+        .filter((b: any) => b.type === "text")
+        .map((b: any) => b.html || b.htmlId || b.htmlEn || "")
+        .join(" ");
+    }
+  } catch {
+    /* content lama: HTML biasa */
+  }
+  const plain = plainText(html).replace(/\s+/g, " ").trim();
+  if (!plain) return "";
+  return plain.length > maxLength
+    ? plain.slice(0, maxLength) + "..."
+    : plain;
+}
+
 export default function InsightsSection({
   lang,
   isId,
@@ -33,24 +59,24 @@ export default function InsightsSection({
   plainText,
   formatDate,
 }: InsightsSectionProps) {
-  const topArticles = [...articles].sort(
-    (a, b) => (b.views || 0) - (a.views || 0)
-  );
+  const viewOf = (a: Article) => a.view_count || a.views || 0;
 
-  const featuredArticle = topArticles[0];
-  const sideArticles = topArticles.slice(1, 4);
+  const getExcerpt = (content: string, maxLength = 100) =>
+    parseExcerpt(content, plainText, maxLength);
 
-  const getExcerpt = (html: string, maxLength: number = 100) => {
-    const plain = plainText(html);
-    return plain.length > maxLength
-      ? plain.substring(0, maxLength) + "..."
-      : plain;
-  };
+  const ranked = [...articles].sort((a, b) => {
+    const fa = a.is_featured ? 1 : 0;
+    const fb = b.is_featured ? 1 : 0;
+    if (fb !== fa) return fb - fa;
+    return viewOf(b) - viewOf(a);
+  });
+
+  const featuredArticle = ranked[0];
+  const sideArticles = ranked.slice(1, 4);
 
   return (
     <section className="relative w-full pt-16 pb-24 bg-emerald-950 border-t border-emerald-900/50 overflow-hidden font-sans">
       <div className="max-w-[1440px] mx-auto px-6 lg:px-12 relative z-10">
-        {/* HEADER */}
         <ScrollReveal className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-10 md:mb-12 border-b border-emerald-800/30 pb-8">
           <div className="max-w-2xl">
             <h2 className="text-3xl md:text-5xl font-extrabold text-white leading-[1.1] tracking-tight">
@@ -67,9 +93,8 @@ export default function InsightsSection({
           </Link>
         </ScrollReveal>
 
-        {topArticles.length > 0 ? (
+        {ranked.length > 0 && featuredArticle ? (
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-8 lg:h-[620px]">
-            {/* FEATURED */}
             <div className="lg:col-span-7 h-[450px] lg:h-full">
               <ScrollReveal className="h-full w-full">
                 <Link
@@ -89,7 +114,6 @@ export default function InsightsSection({
 
                   <div className="absolute bottom-0 left-0 p-6 md:p-10 z-10 w-full">
                     <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold uppercase tracking-widest mb-4">
-                      {/* Author */}
                       <div className="flex items-center gap-2.5 text-emerald-300 bg-emerald-900/60 px-3 py-1.5 rounded-full backdrop-blur-md border border-emerald-800/50 shadow-sm">
                         <div className="w-5 h-5 rounded-full bg-emerald-700 border border-emerald-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shrink-0">
                           {featuredArticle.author_profile_image ? (
@@ -115,9 +139,9 @@ export default function InsightsSection({
 
                       <div className="flex items-center gap-1.5 text-emerald-100/70">
                         <Eye className="w-3.5 h-3.5" />
-                        {featuredArticle.views?.toLocaleString(
+                        {viewOf(featuredArticle).toLocaleString(
                           isId ? "id-ID" : "en-US"
-                        ) || 0}{" "}
+                        )}{" "}
                         {isId ? "Tayangan" : "Views"}
                       </div>
 
@@ -132,14 +156,13 @@ export default function InsightsSection({
                     </h3>
 
                     <p className="text-[15px] md:text-[16px] text-emerald-50/80 leading-relaxed font-medium line-clamp-2 max-w-2xl">
-                      {plainText(featuredArticle.content)}
+                      {getExcerpt(featuredArticle.content, 180)}
                     </p>
                   </div>
                 </Link>
               </ScrollReveal>
             </div>
 
-            {/* SIDE ARTICLES */}
             <div className="lg:col-span-5 flex flex-col gap-4 lg:gap-5 h-[500px] sm:h-[550px] lg:h-full">
               {sideArticles.map((article, index) => (
                 <ScrollReveal
@@ -166,7 +189,6 @@ export default function InsightsSection({
                         {article.title}
                       </h3>
 
-                      {/* Author */}
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-5 h-5 rounded-full bg-emerald-700 border border-emerald-600 flex items-center justify-center text-white text-[9px] font-bold overflow-hidden shrink-0">
                           {article.author_profile_image ? (
@@ -197,9 +219,9 @@ export default function InsightsSection({
                       <div className="mt-auto flex flex-wrap items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-emerald-100/40">
                         <div className="flex items-center gap-1">
                           <Eye className="w-3 h-3" />
-                          {article.views?.toLocaleString(
+                          {viewOf(article).toLocaleString(
                             isId ? "id-ID" : "en-US"
-                          ) || 0}
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />

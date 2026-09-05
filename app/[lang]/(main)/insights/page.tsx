@@ -14,11 +14,11 @@ import {
   ChevronRight,
   Eye,
   Search,
-  User as UserIcon
 } from "lucide-react";
 import ScrollReveal from "../../../../components/ScrollReveal";
 import InsightTabs from "@/components/insights/InsightTabs";
 import RulebookSection from "@/components/insights/RulebookSection";
+import { parseBlocks } from "@/components/admin/ContentBlocksEditor";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -40,13 +40,13 @@ type Article = {
   view_count?: number;
 };
 
-// PERBAIKAN: Menambahkan author_profile_image agar menangkap data dari backend
-type TopAuthor = { 
-  author: string; 
-  count: number; 
+type TopAuthor = {
+  author: string;
+  count: number;
   profile_image?: string | null;
-  author_profile_image?: string | null; 
+  author_profile_image?: string | null;
 };
+
 type TopicItem = { topic: string; count: number };
 
 const TOPIC_LABELS: Record<string, { id: string; en: string }> = {
@@ -77,8 +77,16 @@ function stripHtml(html: string) {
     .trim();
 }
 
-function excerpt(content: string, max = 160) {
-  const plain = /<\/?[a-z]/i.test(content) ? stripHtml(content) : content;
+function excerptFromContent(content: string, max = 160) {
+  const blocks = parseBlocks(content);
+  const plain = blocks
+    .map((b) =>
+      b.type === "text" ? stripHtml(b.htmlId || b.htmlEn || "") : "",
+    )
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return "";
   if (plain.length <= max) return plain;
   return plain.slice(0, max).trim() + "…";
 }
@@ -129,7 +137,7 @@ function InsightCard({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
           </div>
-          
+
           <span className="absolute top-5 left-5 inline-flex items-center px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-sm text-emerald-800 text-[10px] font-extrabold uppercase tracking-[0.12em] shadow-sm">
             {topicLabel(item.topic, isId)}
           </span>
@@ -147,11 +155,10 @@ function InsightCard({
           </h2>
 
           <p className="text-[13.5px] text-stone-600 font-medium leading-relaxed flex-grow line-clamp-3 mb-5">
-            {excerpt(item.content, 120)}
+            {excerptFromContent(item.content, 120)}
           </p>
 
           <div className="mt-auto flex items-center justify-between border-t border-stone-100 pt-5">
-            {/* Author Profile */}
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                 {item.author_profile_image ? (
@@ -177,7 +184,6 @@ function InsightCard({
               </div>
             </div>
 
-            {/* Read Arrow */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 text-[10px] font-bold text-stone-400">
                 <Eye className="w-3 h-3" />
@@ -209,87 +215,99 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"article" | "rulebook">("article");
 
- useEffect(() => {
-  const load = async () => {
-    setLoading(true);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
 
-    const apiLang = lang === "en" ? "en" : "id";
-    const topicQ = activeTopic
-      ? `&topic=${encodeURIComponent(activeTopic)}`
-      : "";
+      const apiLang = lang === "en" ? "en" : "id";
+      const topicQ = activeTopic
+        ? `&topic=${encodeURIComponent(activeTopic)}`
+        : "";
 
-    try {
-      const listRes = await fetch(
-        `${API_URL}/articles/?category=insight&lang=${apiLang}${topicQ}`,
-        {
-          cache: "no-store",
+      try {
+        const listRes = await fetch(
+          `${API_URL}/articles/?category=insight&lang=${apiLang}${topicQ}`,
+          { cache: "no-store" }
+        );
+
+        if (!listRes.ok) {
+          throw new Error(`Articles API error: ${listRes.status}`);
         }
-      );
 
-      if (!listRes.ok) {
-        throw new Error(`Articles API error: ${listRes.status}`);
-      }
+        const list = await listRes.json();
 
-      const list = await listRes.json();
+        const publishedArticles = Array.isArray(list)
+          ? list.filter((a: Article) => a.status === "published")
+          : [];
 
-      const publishedArticles = Array.isArray(list)
-        ? list.filter((a: Article) => a.status === "published")
-        : [];
+        // Featured dulu, lalu terbaru
+        setItems(
+          [...publishedArticles].sort((a, b) => {
+            const fa = a.is_featured ? 1 : 0;
+            const fb = b.is_featured ? 1 : 0;
+            if (fb !== fa) return fb - fa;
+            return b.id - a.id;
+          })
+        );
 
-      const sortedByViews = [...publishedArticles].sort(
-        (a, b) => (b.view_count || 0) - (a.view_count || 0)
-      );
+        // Hero: prioritas is_featured, fallback view tertinggi
+        const featured =
+          publishedArticles.find((a) => a.is_featured) ||
+          [...publishedArticles].sort(
+            (a, b) => (b.view_count || 0) - (a.view_count || 0)
+          )[0] ||
+          null;
 
-      setItems([...publishedArticles].sort((a, b) => b.id - a.id));
-      setTopInsights(sortedByViews.slice(0, 4));
+        setTopInsights(
+          featured
+            ? [
+                featured,
+                ...publishedArticles.filter((a) => a.id !== featured.id),
+              ]
+            : publishedArticles
+        );
 
-      const [authorsResult, topicsResult] = await Promise.allSettled([
-        fetch(`${API_URL}/articles/insights/top-authors?limit=5`,
-          {
+        const [authorsResult, topicsResult] = await Promise.allSettled([
+          fetch(`${API_URL}/articles/insights/top-authors?limit=5`, {
             cache: "no-store",
-          }
-        ).then((res) =>
-          res.ok ? res.json() : []
-        ),
-        fetch(`${API_URL}/articles/insights/topics`).then((res) =>
-          res.ok ? res.json() : []
-        ),
-      ]);
+          }).then((res) => (res.ok ? res.json() : [])),
+          fetch(`${API_URL}/articles/insights/topics`).then((res) =>
+            res.ok ? res.json() : []
+          ),
+        ]);
 
-      if (authorsResult.status === "fulfilled") {
-        setTopAuthors(
-          Array.isArray(authorsResult.value) ? authorsResult.value : []
-        );
-      } else {
+        if (authorsResult.status === "fulfilled") {
+          setTopAuthors(
+            Array.isArray(authorsResult.value) ? authorsResult.value : []
+          );
+        } else {
+          setTopAuthors([]);
+        }
+
+        if (topicsResult.status === "fulfilled") {
+          setTopics(
+            Array.isArray(topicsResult.value) ? topicsResult.value : []
+          );
+        } else {
+          setTopics([]);
+        }
+      } catch (err) {
+        console.error("Failed to load articles:", err);
+        setItems([]);
+        setTopInsights([]);
         setTopAuthors([]);
-      }
-
-      if (topicsResult.status === "fulfilled") {
-        setTopics(
-          Array.isArray(topicsResult.value) ? topicsResult.value : []
-        );
-      } else {
         setTopics([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to load articles:", err);
+    };
 
-      setItems([]);
-      setTopInsights([]);
-      setTopAuthors([]);
-      setTopics([]);
-    } finally {
+    if (activeTab === "article") {
+      load();
+    } else {
       setLoading(false);
     }
-  };
-
-  if (activeTab === "article") {
-    load();
-    
-  } else {
-    setLoading(false);
-  }
-}, [lang, activeTopic, activeTab]);
+  }, [lang, activeTopic, activeTab]);
 
   const filterTopics: TopicItem[] =
     topics.length > 0
@@ -301,7 +319,7 @@ export default function InsightsPage() {
     const q = searchQuery.toLowerCase();
     return (
       item.title.toLowerCase().includes(q) ||
-      excerpt(item.content).toLowerCase().includes(q)
+      excerptFromContent(item.content).toLowerCase().includes(q)
     );
   });
 
@@ -335,7 +353,6 @@ export default function InsightsPage() {
                 : "Scientific and practical perspectives on climate, carbon, and sustainability."}
             </p>
 
-            {/* Search - hanya di tab Article */}
             {activeTab === "article" && (
               <div className="relative w-full max-w-2xl mx-auto mb-8">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
@@ -353,7 +370,6 @@ export default function InsightsPage() {
               </div>
             )}
 
-            {/* Tabs */}
             <InsightTabs
               activeTab={activeTab}
               setActiveTab={(tab) => {
@@ -377,17 +393,13 @@ export default function InsightsPage() {
             </p>
           </div>
         ) : activeTab === "article" ? (
-          /* ===================== ARTICLE TAB ===================== */
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
-            
-            {/* KOLOM KIRI (Main Content) */}
+            {/* KOLOM KIRI */}
             <div className="w-full lg:w-[65%] flex flex-col gap-10">
-              
               {/* FEATURED */}
               {!activeTopic && !searchQuery && featuredArticle && (
                 <ScrollReveal>
                   <div className="bg-white rounded-[2rem] border border-stone-100 shadow-sm overflow-hidden p-2">
-                    
                     <div className="relative w-full aspect-[16/10] md:aspect-[2/1] rounded-[1.5rem] overflow-hidden bg-stone-100">
                       <img
                         src={
@@ -398,13 +410,13 @@ export default function InsightsPage() {
                         className="w-full h-full object-cover transition-transform duration-[1.5s] hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                      
+
                       <div className="absolute top-5 left-5">
                         <span className="px-4 py-1.5 bg-white/95 backdrop-blur-md text-emerald-800 text-[11px] font-extrabold uppercase tracking-widest rounded-full shadow-sm">
                           {topicLabel(featuredArticle.topic, isId)}
                         </span>
                       </div>
-                      
+
                       <div className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-700/95 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-widest shadow-md">
                         <TrendingUp className="w-3.5 h-3.5" />
                         {isId ? "Paling Diminati" : "Trending"}
@@ -420,23 +432,27 @@ export default function InsightsPage() {
                       </h3>
 
                       <p className="text-base text-stone-600 font-medium leading-relaxed mb-8 line-clamp-3">
-                        {excerpt(featuredArticle.content, 250)}
+                        {excerptFromContent(featuredArticle.content, 250)}
                       </p>
 
                       <div className="flex items-center justify-between border-t border-stone-100 pt-6">
-                        
-                        {/* Author Profile on Featured */}
                         <div className="flex items-center gap-3.5">
                           <div className="w-12 h-12 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm">
                             {featuredArticle.author_profile_image ? (
                               <img
-                                src={resolveImageUrl(featuredArticle.author_profile_image) || ""}
+                                src={
+                                  resolveImageUrl(
+                                    featuredArticle.author_profile_image
+                                  ) || ""
+                                }
                                 alt={featuredArticle.author || "Author"}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <span className="text-sm font-extrabold text-emerald-600">
-                                {(featuredArticle.author || "S").charAt(0).toUpperCase()}
+                                {(featuredArticle.author || "S")
+                                  .charAt(0)
+                                  .toUpperCase()}
                               </span>
                             )}
                           </div>
@@ -467,9 +483,8 @@ export default function InsightsPage() {
                 </ScrollReveal>
               )}
 
-              {/* ALL PUBLICATIONS GRID */}
+              {/* ALL PUBLICATIONS */}
               <div className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
-                
                 <div className="flex items-center justify-between border-b border-stone-100 pb-5 mb-8">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -488,7 +503,8 @@ export default function InsightsPage() {
                               : "All Publications"}
                       </h2>
                       <p className="text-[12px] font-medium text-stone-400">
-                        {displayedArticles.length} {isId ? "artikel ditemukan" : "articles found"}
+                        {displayedArticles.length}{" "}
+                        {isId ? "artikel ditemukan" : "articles found"}
                       </p>
                     </div>
                   </div>
@@ -521,10 +537,9 @@ export default function InsightsPage() {
               </div>
             </div>
 
-            {/* KOLOM KANAN (Sidebar Widgets) */}
+            {/* KOLOM KANAN */}
             <div className="w-full lg:w-[35%] flex flex-col gap-6">
-              
-              {/* TOPICS WIDGET */}
+              {/* TOPICS */}
               <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -534,7 +549,7 @@ export default function InsightsPage() {
                     {isId ? "Eksplorasi Topik" : "Explore Topics"}
                   </h3>
                 </div>
-                
+
                 <div className="flex flex-wrap gap-2.5">
                   <button
                     onClick={() => {
@@ -563,7 +578,13 @@ export default function InsightsPage() {
                       }`}
                     >
                       {topicLabel(t.topic, isId)}{" "}
-                      <span className={activeTopic === t.topic ? "text-emerald-200 ml-1" : "text-stone-400 ml-1"}>
+                      <span
+                        className={
+                          activeTopic === t.topic
+                            ? "text-emerald-200 ml-1"
+                            : "text-stone-400 ml-1"
+                        }
+                      >
                         {t.count}
                       </span>
                     </button>
@@ -571,7 +592,52 @@ export default function InsightsPage() {
                 </div>
               </ScrollReveal>
 
-              {/* TRENDING WIDGET */}
+              {/* LATEST / PER TOPIK */}
+              <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Newspaper className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-[15px] font-extrabold text-stone-900">
+                    {activeTopic
+                      ? topicLabel(activeTopic, isId)
+                      : isId
+                        ? "Artikel terbaru"
+                        : "Latest articles"}
+                  </h3>
+                </div>
+
+                <div className="flex flex-col divide-y divide-stone-100">
+                  {items.slice(0, 8).map((article) => (
+                    <Link
+                      key={`side-list-${article.id}`}
+                      href={`/${lang}/insights/${article.slug}`}
+                      className="group py-4 first:pt-0 last:pb-0 flex gap-3"
+                    >
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
+                        <img
+                          src={
+                            resolveImageUrl(article.image_url) ||
+                            "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=200&q=80"
+                          }
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 mb-1">
+                          {topicLabel(article.topic, isId)}
+                        </p>
+                        <h4 className="text-[13.5px] font-extrabold text-stone-800 leading-snug group-hover:text-emerald-700 line-clamp-2">
+                          {article.title}
+                        </h4>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </ScrollReveal>
+
+              {/* TRENDING */}
               {sidebarPicks.length > 0 && (
                 <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
@@ -615,7 +681,7 @@ export default function InsightsPage() {
                 </ScrollReveal>
               )}
 
-              {/* TOP AUTHORS WIDGET */}
+              {/* TOP AUTHORS */}
               {topAuthors.length > 0 && (
                 <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
@@ -626,12 +692,12 @@ export default function InsightsPage() {
                       {isId ? "Penulis Utama" : "Top Authors"}
                     </h3>
                   </div>
-                  
+
                   <div className="flex flex-col gap-2">
                     {topAuthors.slice(0, 5).map((a) => {
-                      // PERBAIKAN: Menangkap baik profile_image atau author_profile_image
-                      const authorImage = a.author_profile_image || a.profile_image;
-                      
+                      const authorImage =
+                        a.author_profile_image || a.profile_image;
+
                       return (
                         <div
                           key={a.author}
@@ -639,17 +705,17 @@ export default function InsightsPage() {
                         >
                           <div className="flex items-center gap-3.5">
                             <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                               {authorImage ? (
-                                 <img
-                                   src={resolveImageUrl(authorImage) || ""}
-                                   alt={a.author}
-                                   className="w-full h-full object-cover"
-                                 />
-                               ) : (
-                                 <span className="text-[13px] font-extrabold text-emerald-600">
-                                    {(a.author || "S").charAt(0).toUpperCase()}
-                                 </span>
-                               )}
+                              {authorImage ? (
+                                <img
+                                  src={resolveImageUrl(authorImage) || ""}
+                                  alt={a.author}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-[13px] font-extrabold text-emerald-600">
+                                  {(a.author || "S").charAt(0).toUpperCase()}
+                                </span>
+                              )}
                             </div>
                             <div className="flex flex-col">
                               <span className="text-[14px] font-extrabold text-stone-800">
@@ -670,7 +736,6 @@ export default function InsightsPage() {
             </div>
           </div>
         ) : (
-          /* ===================== RULEBOOK TAB ===================== */
           <RulebookSection />
         )}
       </div>

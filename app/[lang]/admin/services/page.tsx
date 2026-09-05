@@ -154,6 +154,7 @@ export default function AdminServicesPage() {
       },
     ]);
     
+    // Auto scroll ke bawah agar form yang baru ditambahkan langsung terlihat
     setTimeout(() => {
       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     }, 100);
@@ -414,7 +415,7 @@ export default function AdminServicesPage() {
       )}
 
       {/* STICKY TOP BAR */}
-      <div className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-4 p-4 md:px-8 md:py-5 mb-10 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 rounded-b-3xl md:rounded-3xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] mx-[-1rem] md:mx-0 translate-y-[-1rem] md:translate-y-0">
+      <div className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-4 p-4 md:px-8 md:py-5 mb-6 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 rounded-b-3xl md:rounded-3xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.08)] mx-[-1rem] md:mx-0 translate-y-[-1rem] md:translate-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1 flex items-center gap-3">
             <ShieldCheck className="w-7 h-7 text-emerald-500" />
@@ -431,7 +432,7 @@ export default function AdminServicesPage() {
           type="button"
           onClick={handleSaveAll}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 hover:shadow-lg hover:shadow-emerald-600/20 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 disabled:opacity-60"
+          className="inline-flex items-center gap-2 px-6 py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 hover:shadow-lg hover:shadow-emerald-600/20 hover:-translate-y-0.5 active:scale-95 transition-all duration-300 disabled:opacity-60 w-full sm:w-auto justify-center"
         >
           {saving ? (
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -441,6 +442,18 @@ export default function AdminServicesPage() {
           <span className="hidden sm:inline">
             {saving ? (isId ? "Menyimpan..." : "Saving...") : (isId ? "Simpan Semua" : "Save All")}
           </span>
+        </button>
+      </div>
+
+      {/* TOP ADD SERVICE BUTTON (DI LUAR HEADER, KANAN) */}
+      <div className="flex justify-end mb-8 px-4 md:px-0">
+        <button
+          type="button"
+          onClick={addRow}
+          className="inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl border-2 border-emerald-100 bg-white text-emerald-700 font-bold hover:bg-emerald-50 hover:border-emerald-200 transition-colors w-full sm:w-auto shadow-sm active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          {isId ? "Tambah Layanan Baru" : "Add New Service"}
         </button>
       </div>
 

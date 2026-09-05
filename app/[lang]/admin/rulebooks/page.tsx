@@ -18,7 +18,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 type Rulebook = {
   id: number;
@@ -63,7 +64,7 @@ export default function AdminRulebooksPage() {
   const [editing, setEditing] = useState<Rulebook | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [statusOpen, setStatusOpen] = useState(false); // State untuk custom dropdown
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const [deleteItem, setDeleteItem] = useState<Rulebook | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -97,6 +98,21 @@ export default function AdminRulebooksPage() {
     }
   };
 
+  const validatePdf = (file: File) => {
+    if (file.type !== "application/pdf") {
+      setError(isId ? "File harus format PDF." : "File must be PDF format.");
+      return false;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setError(
+        isId ? "Ukuran PDF maksimal 25MB." : "Maximum PDF size is 25MB."
+      );
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   const loadRulebooks = async () => {
     try {
       const response = await fetch(`${API_URL}/rulebooks/admin/all`, {
@@ -109,11 +125,20 @@ export default function AdminRulebooksPage() {
       }
 
       if (response.status === 403) {
-        throw new Error(isId ? "Akses ditolak. Halaman ini hanya untuk Admin." : "Access denied. Admin only.");
+        throw new Error(
+          isId
+            ? "Akses ditolak. Halaman ini hanya untuk Admin."
+            : "Access denied. Admin only."
+        );
       }
 
       if (!response.ok) {
-        throw new Error(await readError(response, isId ? "Gagal memuat Rulebook." : "Failed to load Rulebooks."));
+        throw new Error(
+          await readError(
+            response,
+            isId ? "Gagal memuat Rulebook." : "Failed to load Rulebooks."
+          )
+        );
       }
 
       const data = await response.json();
@@ -186,21 +211,44 @@ export default function AdminRulebooksPage() {
         data.append("title", form.title);
         data.append("description", form.description);
         data.append("status", form.status);
+        if (pdfFile) {
+          data.append("file", pdfFile);
+        }
 
-        const response = await fetch(`${API_URL}/rulebooks/admin/${editing.id}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token()}` },
-          body: data,
-        });
+        const response = await fetch(
+          `${API_URL}/rulebooks/admin/${editing.id}`,
+          {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token()}` },
+            body: data,
+          }
+        );
 
         if (!response.ok) {
-          throw new Error(await readError(response, isId ? "Gagal memperbarui Rulebook." : "Failed to update Rulebook."));
+          throw new Error(
+            await readError(
+              response,
+              isId
+                ? "Gagal memperbarui Rulebook."
+                : "Failed to update Rulebook."
+            )
+          );
         }
-        setSuccess(isId ? "Rulebook berhasil diperbarui." : "Rulebook updated successfully.");
+
+        setSuccess(
+          isId
+            ? "Rulebook berhasil diperbarui."
+            : "Rulebook updated successfully."
+        );
       } else {
         if (!pdfFile) {
-          throw new Error(isId ? "Pilih file PDF terlebih dahulu." : "Please select a PDF file.");
+          throw new Error(
+            isId
+              ? "Pilih file PDF terlebih dahulu."
+              : "Please select a PDF file."
+          );
         }
+
         const data = new FormData();
         data.append("title", form.title);
         data.append("description", form.description);
@@ -214,9 +262,19 @@ export default function AdminRulebooksPage() {
         });
 
         if (!response.ok) {
-          throw new Error(await readError(response, isId ? "Gagal upload Rulebook." : "Failed to upload Rulebook."));
+          throw new Error(
+            await readError(
+              response,
+              isId ? "Gagal upload Rulebook." : "Failed to upload Rulebook."
+            )
+          );
         }
-        setSuccess(isId ? "Rulebook berhasil ditambahkan." : "Rulebook uploaded successfully.");
+
+        setSuccess(
+          isId
+            ? "Rulebook berhasil ditambahkan."
+            : "Rulebook uploaded successfully."
+        );
       }
 
       closeForm();
@@ -233,17 +291,26 @@ export default function AdminRulebooksPage() {
     setDeleting(true);
 
     try {
-      const response = await fetch(`${API_URL}/rulebooks/admin/${deleteItem.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const response = await fetch(
+        `${API_URL}/rulebooks/admin/${deleteItem.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token()}` },
+        }
+      );
 
       if (!response.ok && response.status !== 204) {
-        throw new Error(isId ? "Gagal menghapus Rulebook." : "Failed to delete Rulebook.");
+        throw new Error(
+          isId ? "Gagal menghapus Rulebook." : "Failed to delete Rulebook."
+        );
       }
 
       setDeleteItem(null);
-      setSuccess(isId ? "Rulebook berhasil dihapus." : "Rulebook deleted successfully.");
+      setSuccess(
+        isId
+          ? "Rulebook berhasil dihapus."
+          : "Rulebook deleted successfully."
+      );
       await loadRulebooks();
     } catch (err: any) {
       setError(err.message);
@@ -258,13 +325,21 @@ export default function AdminRulebooksPage() {
     setLoadingLeads(true);
 
     try {
-      const response = await fetch(`${API_URL}/rulebooks/admin/${item.id}/downloads`, {
-        headers: { Authorization: `Bearer ${token()}` },
-      });
+      const response = await fetch(
+        `${API_URL}/rulebooks/admin/${item.id}/downloads`,
+        {
+          headers: { Authorization: `Bearer ${token()}` },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(isId ? "Gagal memuat data download." : "Failed to load download data.");
+        throw new Error(
+          isId
+            ? "Gagal memuat data download."
+            : "Failed to load download data."
+        );
       }
+
       const data = await response.json();
       setLeads(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -282,13 +357,12 @@ export default function AdminRulebooksPage() {
     );
   }
 
-  // Consistent input styling
-  const inputClassName = "w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm bg-slate-50 focus:bg-white text-slate-800 text-sm font-medium";
+  const inputClassName =
+    "w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all duration-200 shadow-sm bg-slate-50 focus:bg-white text-slate-800 text-sm font-medium";
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-8 pt-0 md:-mt-4 font-sans selection:bg-emerald-200">
-      
-      {/* HEADER CARD MODERN */}
+      {/* HEADER */}
       <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shadow-inner shrink-0">
@@ -331,14 +405,18 @@ export default function AdminRulebooksPage() {
         </div>
       )}
 
-      {/* FORM MODAL / CARD */}
+      {/* FORM */}
       {showForm && (
         <div className="mb-8 bg-white border border-slate-100 rounded-2xl p-5 md:p-6 shadow-md animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">
               {editing
-                ? isId ? "Edit Rulebook" : "Edit Rulebook"
-                : isId ? "Upload Rulebook Baru" : "Upload New Rulebook"}
+                ? isId
+                  ? "Edit Rulebook"
+                  : "Edit Rulebook"
+                : isId
+                  ? "Upload Rulebook Baru"
+                  : "Upload New Rulebook"}
             </h2>
             <button
               type="button"
@@ -361,7 +439,9 @@ export default function AdminRulebooksPage() {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className={inputClassName}
-                  placeholder={isId ? "Misal: Panduan ESG 2026" : "e.g. ESG Guide 2026"}
+                  placeholder={
+                    isId ? "Misal: Panduan ESG 2026" : "e.g. ESG Guide 2026"
+                  }
                 />
               </div>
 
@@ -372,18 +452,29 @@ export default function AdminRulebooksPage() {
                 <textarea
                   rows={4}
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   className={`${inputClassName} resize-none`}
-                  placeholder={isId ? "Tulis deskripsi singkat tentang dokumen ini..." : "Write a brief description..."}
+                  placeholder={
+                    isId
+                      ? "Tulis deskripsi singkat tentang dokumen ini..."
+                      : "Write a brief description..."
+                  }
                 />
               </div>
 
-              {/* Status Dropdown (Custom) */}
+              {/* Status */}
               <div className="relative">
-                <label className="block text-xs font-bold text-slate-700 mb-2">Status</label>
-                
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Status
+                </label>
+
                 {statusOpen && (
-                  <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setStatusOpen(false)}
+                  />
                 )}
 
                 <button
@@ -394,7 +485,11 @@ export default function AdminRulebooksPage() {
                   <span className="font-semibold text-slate-700 capitalize">
                     {form.status}
                   </span>
-                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${statusOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                      statusOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
                 {statusOpen && (
@@ -422,37 +517,54 @@ export default function AdminRulebooksPage() {
                 )}
               </div>
 
-              {/* PDF Upload */}
-              {!editing && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">PDF File</label>
-                  <label className="flex items-center gap-3 h-[42px] px-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:bg-emerald-50 hover:border-emerald-300 transition-all group">
-                    <Upload className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 transition-colors" />
-                    <span className="text-sm font-semibold text-slate-500 group-hover:text-emerald-700 truncate transition-colors">
-                      {pdfFile ? pdfFile.name : isId ? "Pilih file PDF..." : "Select PDF file..."}
-                    </span>
-                    <input
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.type !== "application/pdf") {
-                          setError(isId ? "File harus format PDF." : "File must be PDF format.");
-                          return;
-                        }
-                        if (file.size > 25 * 1024 * 1024) {
-                          setError(isId ? "Ukuran PDF maksimal 25MB." : "Maximum PDF size is 25MB.");
-                          return;
-                        }
-                        setError(null);
-                        setPdfFile(file);
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
+              {/* PDF — create wajib, edit opsional */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  {editing
+                    ? isId
+                      ? "Ganti PDF (opsional)"
+                      : "Replace PDF (optional)"
+                    : "PDF File"}
+                </label>
+                <label className="flex items-center gap-3 h-[42px] px-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:bg-emerald-50 hover:border-emerald-300 transition-all group">
+                  <Upload className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 transition-colors" />
+                  <span className="text-sm font-semibold text-slate-500 group-hover:text-emerald-700 truncate transition-colors">
+                    {pdfFile
+                      ? pdfFile.name
+                      : editing
+                        ? isId
+                          ? "Biarkan kosong jika tidak diganti"
+                          : "Leave empty to keep current PDF"
+                        : isId
+                          ? "Pilih file PDF..."
+                          : "Select PDF file..."}
+                  </span>
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!validatePdf(file)) return;
+                      setPdfFile(file);
+                    }}
+                  />
+                </label>
+                {editing && (
+                  <p className="mt-1.5 text-[11px] text-slate-400 font-medium truncate">
+                    {isId ? "File saat ini: " : "Current file: "}
+                    <a
+                      href={editing.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-emerald-600 hover:underline"
+                    >
+                      {editing.file_url.split("/").pop() || "PDF"}
+                    </a>
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
@@ -466,7 +578,17 @@ export default function AdminRulebooksPage() {
                 ) : (
                   <CheckCircle2 className="w-4 h-4" />
                 )}
-                {saving ? (isId ? "Menyimpan..." : "Saving...") : editing ? (isId ? "Simpan Perubahan" : "Save Changes") : (isId ? "Upload Rulebook" : "Upload Rulebook")}
+                {saving
+                  ? isId
+                    ? "Menyimpan..."
+                    : "Saving..."
+                  : editing
+                    ? isId
+                      ? "Simpan Perubahan"
+                      : "Save Changes"
+                    : isId
+                      ? "Upload Rulebook"
+                      : "Upload Rulebook"}
               </button>
               <button
                 type="button"
@@ -480,7 +602,7 @@ export default function AdminRulebooksPage() {
         </div>
       )}
 
-      {/* RULEBOOKS LIST CARDS */}
+      {/* LIST */}
       {items.length === 0 ? (
         <div className="py-20 bg-white border border-slate-100 rounded-2xl text-center shadow-sm">
           <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-4">
@@ -490,7 +612,9 @@ export default function AdminRulebooksPage() {
             {isId ? "Belum Ada Rulebook" : "No Rulebooks Yet"}
           </h3>
           <p className="text-sm text-slate-500 font-medium">
-            {isId ? "Upload PDF pertama untuk mulai menampilkan Rulebook." : "Upload your first PDF to start displaying Rulebooks."}
+            {isId
+              ? "Upload PDF pertama untuk mulai menampilkan Rulebook."
+              : "Upload your first PDF to start displaying Rulebooks."}
           </p>
         </div>
       ) : (
@@ -518,16 +642,19 @@ export default function AdminRulebooksPage() {
               <h2 className="text-lg font-extrabold text-slate-800 leading-snug line-clamp-2 mb-2">
                 {item.title}
               </h2>
-              
+
               <p className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-3 min-h-[60px]">
-                {item.description || (isId ? "Tanpa deskripsi." : "No description.")}
+                {item.description ||
+                  (isId ? "Tanpa deskripsi." : "No description.")}
               </p>
 
               <div className="grid grid-cols-2 gap-3 mt-5">
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 text-slate-400 mb-1">
                     <Download className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Downloads</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      Downloads
+                    </span>
                   </div>
                   <strong className="text-lg font-extrabold text-emerald-700">
                     {item.download_count || 0}
@@ -588,12 +715,14 @@ export default function AdminRulebooksPage() {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
+      {/* DELETE MODAL */}
       {deleteItem && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setDeleteItem(null)} />
-           <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300 text-center">
-            
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setDeleteItem(null)}
+          />
+          <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300 text-center">
             <div className="w-16 h-16 bg-rose-50 rounded-[1.2rem] flex items-center justify-center mx-auto mb-5 border border-rose-100 relative">
               <div className="absolute inset-0 rounded-[1.2rem] border-2 border-rose-200 animate-ping opacity-50 duration-1000" />
               <AlertTriangle className="w-8 h-8 text-rose-500 relative z-10" />
@@ -604,9 +733,15 @@ export default function AdminRulebooksPage() {
             </h3>
 
             <p className="text-sm text-slate-500 font-medium mb-8 leading-relaxed px-2">
-              {isId ? `PDF beserta data unduhan untuk ` : `The PDF and download data for `}
-              <span className="font-bold text-rose-600">"{deleteItem.title}"</span> 
-              {isId ? ` akan dihapus permanen.` : ` will be permanently deleted.`}
+              {isId
+                ? "PDF beserta data unduhan untuk "
+                : "The PDF and download data for "}
+              <span className="font-bold text-rose-600">
+                &quot;{deleteItem.title}&quot;
+              </span>
+              {isId
+                ? " akan dihapus permanen."
+                : " will be permanently deleted."}
             </p>
 
             <div className="flex items-center gap-3">
@@ -638,19 +773,23 @@ export default function AdminRulebooksPage() {
         </div>
       )}
 
-      {/* DOWNLOAD LEADS MODAL */}
+      {/* LEADS MODAL */}
       {leadRulebook && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-6">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setLeadRulebook(null)} />
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setLeadRulebook(null)}
+          />
           <div className="relative bg-white w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[2rem] shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-            
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-[2rem]">
               <div>
                 <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                   {leadRulebook.title}
                 </h3>
                 <p className="text-xs font-medium text-slate-500 mt-1">
-                  {isId ? "Daftar pengguna yang mengunduh dokumen ini." : "List of users who downloaded this document."}
+                  {isId
+                    ? "Daftar pengguna yang mengunduh dokumen ini."
+                    : "List of users who downloaded this document."}
                 </p>
               </div>
               <button
@@ -666,15 +805,19 @@ export default function AdminRulebooksPage() {
               {loadingLeads ? (
                 <div className="py-20 flex flex-col justify-center items-center gap-4">
                   <div className="w-10 h-10 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Loading data...</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    Loading data...
+                  </span>
                 </div>
               ) : leads.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                     <Users className="w-6 h-6 text-slate-300" />
+                    <Users className="w-6 h-6 text-slate-300" />
                   </div>
                   <p className="text-slate-500 font-medium text-sm">
-                    {isId ? "Belum ada yang mengunduh Rulebook ini." : "No downloads yet."}
+                    {isId
+                      ? "Belum ada yang mengunduh Rulebook ini."
+                      : "No downloads yet."}
                   </p>
                 </div>
               ) : (
@@ -682,21 +825,44 @@ export default function AdminRulebooksPage() {
                   <table className="w-full min-w-[700px] text-sm">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-left">
-                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Nama</th>
-                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Email</th>
-                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Telepon</th>
-                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Instansi</th>
-                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Tanggal</th>
+                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Nama
+                        </th>
+                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Email
+                        </th>
+                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Telepon
+                        </th>
+                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Instansi
+                        </th>
+                        <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">
+                          Tanggal
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {leads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3.5 px-4 font-bold text-slate-800">{lead.name}</td>
-                          <td className="py-3.5 px-4 font-medium text-slate-600">{lead.email}</td>
-                          <td className="py-3.5 px-4 font-medium text-slate-600">{lead.phone}</td>
-                          <td className="py-3.5 px-4 font-medium text-slate-600">{lead.institution}</td>
-                          <td className="py-3.5 px-4 font-medium text-slate-500 text-right">{formatDate(lead.created_at)}</td>
+                        <tr
+                          key={lead.id}
+                          className="hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="py-3.5 px-4 font-bold text-slate-800">
+                            {lead.name}
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-600">
+                            {lead.email}
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-600">
+                            {lead.phone}
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-600">
+                            {lead.institution}
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-slate-500 text-right">
+                            {formatDate(lead.created_at)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -707,7 +873,6 @@ export default function AdminRulebooksPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
