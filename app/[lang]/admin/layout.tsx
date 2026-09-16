@@ -251,6 +251,19 @@ export default function AdminLayout({
       </div>
     ));
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF9] flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin mb-4" />
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-900/40 animate-pulse">
+            {isId ? "Memverifikasi Akses..." : "Verifying Access..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAF9] flex font-sans text-slate-800 selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden">
       {/* DESKTOP SIDEBAR */}

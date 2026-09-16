@@ -70,6 +70,7 @@ export default function ImageCropModal({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cropError, setCropError] = useState<string | null>(null);
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
@@ -78,12 +79,13 @@ export default function ImageCropModal({
   const handleSave = async () => {
     if (!croppedAreaPixels) return;
     setBusy(true);
+    setCropError(null);
     try {
       const file = await getCroppedFile(imageSrc, croppedAreaPixels);
       onComplete(file);
     } catch (e) {
       console.error(e);
-      alert("Gagal memotong gambar");
+      setCropError("Gagal memotong gambar. Coba format file lain.");
     } finally {
       setBusy(false);
     }
@@ -135,6 +137,12 @@ export default function ImageCropModal({
               className="w-full mt-2 accent-emerald-600"
             />
           </div>
+
+          {cropError && (
+            <p className="text-xs text-rose-600 font-medium bg-rose-50 border border-rose-100 px-3 py-2 rounded-xl">
+              {cropError}
+            </p>
+          )}
 
           <div className="flex gap-3 justify-end">
             <button

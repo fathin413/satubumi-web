@@ -17,6 +17,7 @@ import {
   File,
   ChevronDown,
 } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -89,13 +90,7 @@ export default function AdminRulebooksPage() {
   };
 
   const readError = async (response: Response, fallback: string) => {
-    try {
-      const data = await response.json();
-      if (typeof data.detail === "string") return data.detail;
-      return fallback;
-    } catch {
-      return fallback;
-    }
+    return await extractErrorMessage(response, fallback, lang);
   };
 
   const validatePdf = (file: File) => {
@@ -143,8 +138,8 @@ export default function AdminRulebooksPage() {
 
       const data = await response.json();
       setItems(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -279,8 +274,8 @@ export default function AdminRulebooksPage() {
 
       closeForm();
       await loadRulebooks();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -301,7 +296,10 @@ export default function AdminRulebooksPage() {
 
       if (!response.ok && response.status !== 204) {
         throw new Error(
-          isId ? "Gagal menghapus Rulebook." : "Failed to delete Rulebook."
+          await readError(
+            response,
+            isId ? "Gagal menghapus Rulebook." : "Failed to delete Rulebook."
+          )
         );
       }
 
@@ -312,8 +310,9 @@ export default function AdminRulebooksPage() {
           : "Rulebook deleted successfully."
       );
       await loadRulebooks();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+      setDeleteItem(null);
     } finally {
       setDeleting(false);
     }
@@ -334,16 +333,19 @@ export default function AdminRulebooksPage() {
 
       if (!response.ok) {
         throw new Error(
-          isId
-            ? "Gagal memuat data download."
-            : "Failed to load download data."
+          await readError(
+            response,
+            isId
+              ? "Gagal memuat data download."
+              : "Failed to load download data."
+          )
         );
       }
 
       const data = await response.json();
       setLeads(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoadingLeads(false);
     }

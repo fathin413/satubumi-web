@@ -12,6 +12,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 const FALLBACK_INSIGHT = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop";
 
+export const metadata = {
+  title: "Home",
+};
+
 type Article = {
   id: number;
   category: string;

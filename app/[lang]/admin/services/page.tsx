@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import ImageCropModal from "@/components/ImageCropModal";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
@@ -90,7 +91,9 @@ export default function AdminServicesPage() {
     const load = async () => {
       try {
         const res = await fetch(`${API_URL}/articles/?lang=id`);
-        if (!res.ok) throw new Error("Failed to load");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat layanan" : "Failed to load services", lang));
+        }
         const data = await res.json();
         const list: Article[] = Array.isArray(data) ? data : [];
         
@@ -125,8 +128,8 @@ export default function AdminServicesPage() {
                 },
               ]
         );
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -173,11 +176,13 @@ export default function AdminServicesPage() {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token()}` },
         });
-        if (!res.ok) throw new Error(isId ? "Gagal menghapus layanan" : "Delete service failed");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus layanan" : "Delete service failed", lang));
+        }
         
         setSuccess(isId ? "Layanan berhasil dihapus!" : "Service successfully deleted!");
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
         setIsDeleting(false);
         setServiceToDelete(null);
         return;
@@ -200,7 +205,7 @@ export default function AdminServicesPage() {
               content_en: "",
               preview: null,
               file: null,
-              isEditing: true,
+              isEditing: true, 
             },
           ];
     });
@@ -217,7 +222,9 @@ export default function AdminServicesPage() {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok) throw new Error(isId ? "Upload gagal" : "Upload failed");
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, isId ? "Upload gagal" : "Upload failed", lang));
+    }
   };
 
   const handleSaveAll = async () => {
@@ -255,7 +262,9 @@ export default function AdminServicesPage() {
             },
             body: JSON.stringify(payload),
           });
-          if (!res.ok) throw new Error(`Gagal update layanan #${i + 1}`);
+          if (!res.ok) {
+            throw new Error(await extractErrorMessage(res, `Gagal update layanan #${i + 1}`, lang));
+          }
           saved = await res.json();
         } else {
           const res = await fetch(`${API_URL}/articles/`, {
@@ -266,7 +275,9 @@ export default function AdminServicesPage() {
             },
             body: JSON.stringify(payload),
           });
-          if (!res.ok) throw new Error(`Gagal buat layanan #${i + 1}`);
+          if (!res.ok) {
+            throw new Error(await extractErrorMessage(res, `Gagal buat layanan #${i + 1}`, lang));
+          }
           saved = await res.json();
           nextRows[i] = { ...row, id: saved.id, key: `id-${saved.id}` };
         }
@@ -282,8 +293,8 @@ export default function AdminServicesPage() {
 
       setRows(nextRows);
       setSuccess(isId ? "Semua layanan berhasil disimpan!" : "All services saved successfully!");
-    } catch (err: any) {
-      setError(err.message || "An error occurred while saving.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, isId ? "Terjadi kesalahan saat menyimpan." : "An error occurred while saving."));
     } finally {
       setSaving(false);
     }

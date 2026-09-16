@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import ScrollReveal from "../ScrollReveal";
+import AutoShrinkText from "./AutoShrinkText";
 
 interface HeroSectionProps {
   lang: string;
@@ -40,8 +41,8 @@ export default function HeroSection({
   }, [images]);
 
   return (
-    // Padding top dikurangi dari pt-32 menjadi pt-24 agar lebih dekat dengan header
-    <section className="relative w-full flex flex-col justify-center min-h-[95vh] pt-28 pb-20 z-0 overflow-hidden font-sans">
+    // min-h-screen memastikan hero selalu memenuhi satu layar penuh (tidak mengecil saat teks pendek/panjang)
+    <section className="relative w-full flex flex-col justify-center min-h-screen min-h-[100dvh] pt-28 pb-20 z-0 overflow-hidden font-sans">
       
       {/* ================= BACKGROUND IMAGE ANIMATION & GREEN FILTER ================= */}
       <div className="absolute inset-0 z-0 bg-[#01140a] overflow-hidden pointer-events-none">
@@ -84,8 +85,8 @@ export default function HeroSection({
       </div>
 
       {/* ================= CONTENT CONTAINER ================= */}
-      {/* Margin tambahan (mt-10) dihilangkan agar konten naik ke atas mendekati navbar */}
-      <div className="relative z-30 w-full max-w-[1440px] mx-auto px-4 lg:px-12 flex flex-col items-center justify-center text-center">
+      {/* my-auto memastikan konten selalu vertikal di tengah layar 100vh */}
+      <div className="relative z-30 w-full max-w-[1440px] mx-auto px-4 lg:px-12 flex flex-col items-center justify-center text-center my-auto">
         <ScrollReveal baseClass="opacity-0 translate-y-12" className="flex flex-col items-center relative w-full overflow-hidden">
           
           {/* Badge / Eyebrow */}
@@ -97,14 +98,14 @@ export default function HeroSection({
           </div>
 
           {/* HEADLINE */}
-          <h1 className="w-full flex flex-col items-center font-extrabold text-white leading-[1.05] drop-shadow-2xl mb-8">
-            <span className="whitespace-nowrap text-[clamp(2rem,7vw,6.5rem)] tracking-tight">
+          <h1 className="w-full max-w-full flex flex-col items-center font-extrabold text-white leading-[1.05] drop-shadow-2xl mb-8">
+            <AutoShrinkText className="font-extrabold tracking-tight text-[clamp(2rem,7vw,6.5rem)] text-white">
               {title}
-            </span>
+            </AutoShrinkText>
             {highlight && (
-              <span className="whitespace-nowrap font-serif italic font-light text-emerald-400 drop-shadow-xl mt-1 md:mt-3 text-[clamp(2.5rem,8vw,7.5rem)] tracking-tight">
+              <AutoShrinkText className="font-serif italic font-light text-emerald-400 drop-shadow-xl mt-1 md:mt-3 text-[clamp(2.5rem,8vw,7.5rem)] tracking-tight">
                 {highlight}
-              </span>
+              </AutoShrinkText>
             )}
           </h1>
 

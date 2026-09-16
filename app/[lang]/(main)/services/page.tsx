@@ -11,6 +11,7 @@ import ScrollReveal from "../../../../components/ScrollReveal";
 
 import en from "../../../../dictionaries/en.json";
 import id from "../../../../dictionaries/id.json";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 
 const API_URL =
@@ -224,7 +225,7 @@ function Description({
         line-clamp-3
         "
         dangerouslySetInnerHTML={{
-          __html:descHtml
+          __html:sanitizeHtml(descHtml)
         }}
       />
 

@@ -1,9 +1,12 @@
 import "./globals.css"; 
 import "leaflet/dist/leaflet.css";
+import PageTitleUpdater from "../../components/PageTitleUpdater";
 
 export const metadata = {
-  
-  title: "Satubumi",
+  title: {
+    default: "Home | Satubumi",
+    template: "%s | Satubumi",
+  },
   description: "Bridging science, nature, and business.",
 };
 
@@ -19,6 +22,7 @@ export default async function RootLayout({
   return (
     <html lang={lang} suppressHydrationWarning>
       <body className="bg-slate-50 text-slate-900 font-sans antialiased" suppressHydrationWarning>
+        <PageTitleUpdater />
         {children}
       </body>
     </html>

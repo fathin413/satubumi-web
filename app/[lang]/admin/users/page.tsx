@@ -20,6 +20,7 @@ import {
   Lock,
   Camera,
 } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -112,7 +113,11 @@ export default function AdminUsersPage() {
 
     if (!res.ok) {
       throw new Error(
-        isId ? "Gagal upload foto profil" : "Failed to upload profile image"
+        await extractErrorMessage(
+          res,
+          isId ? "Gagal upload foto profil" : "Failed to upload profile image",
+          lang
+        )
       );
     }
   };
@@ -148,14 +153,18 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         throw new Error(
-          isId ? "Gagal memuat pengguna" : "Failed to load users"
+          await extractErrorMessage(
+            res,
+            isId ? "Gagal memuat pengguna" : "Failed to load users",
+            lang
+          )
         );
       }
 
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -268,13 +277,12 @@ export default function AdminUsersPage() {
         });
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           throw new Error(
-            typeof data.detail === "string"
-              ? data.detail
-              : isId
-                ? "Gagal memperbarui pengguna"
-                : "Failed to update user"
+            await extractErrorMessage(
+              res,
+              isId ? "Gagal memperbarui pengguna" : "Failed to update user",
+              lang
+            )
           );
         }
 
@@ -299,13 +307,12 @@ export default function AdminUsersPage() {
         });
 
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           throw new Error(
-            typeof data.detail === "string"
-              ? data.detail
-              : isId
-                ? "Gagal membuat pengguna"
-                : "Failed to create user"
+            await extractErrorMessage(
+              res,
+              isId ? "Gagal membuat pengguna" : "Failed to create user",
+              lang
+            )
           );
         }
 
@@ -318,8 +325,8 @@ export default function AdminUsersPage() {
 
       closeForm();
       await loadUsers();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -341,7 +348,11 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         throw new Error(
-          isId ? "Gagal menghapus pengguna" : "Failed to delete user"
+          await extractErrorMessage(
+            res,
+            isId ? "Gagal menghapus pengguna" : "Failed to delete user",
+            lang
+          )
         );
       }
 
@@ -350,8 +361,9 @@ export default function AdminUsersPage() {
       );
       setUserToDelete(null);
       await loadUsers();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+      setUserToDelete(null);
     } finally {
       setDeletingId(null);
     }

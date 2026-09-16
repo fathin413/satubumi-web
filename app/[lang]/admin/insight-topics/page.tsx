@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -69,16 +70,14 @@ export default function AdminInsightTopicsPage() {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/insight-topics/`);
-      if (!res.ok) throw new Error("fail");
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat topic." : "Failed to load topics.", lang));
+      }
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err: unknown) {
       setItems([]);
-      setError(
-        isId
-          ? "Gagal memuat topic. Cek backend & endpoint /insight-topics/."
-          : "Failed to load topics. Check backend & /insight-topics/."
-      );
+      setError(getErrorMessage(err, isId ? "Gagal memuat topic." : "Failed to load topics."));
     } finally {
       setLoading(false);
     }
@@ -157,10 +156,8 @@ export default function AdminInsightTopicsPage() {
       }
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
         throw new Error(
-          err.detail ||
-            (isId ? "Gagal menyimpan topic." : "Failed to save topic.")
+          await extractErrorMessage(res, isId ? "Gagal menyimpan topic." : "Failed to save topic.", lang)
         );
       }
 
@@ -169,7 +166,7 @@ export default function AdminInsightTopicsPage() {
       await load();
       setTimeout(() => setSuccess(null), 2500);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -192,13 +189,14 @@ export default function AdminInsightTopicsPage() {
         headers: { Authorization: `Bearer ${t}` },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
         throw new Error(
-          typeof err.detail === "string"
-            ? err.detail
-            : isId
-            ? "Gagal menghapus. Topic mungkin masih dipakai artikel."
-            : "Delete failed. Topic may still be in use."
+          await extractErrorMessage(
+            res,
+            isId
+              ? "Gagal menghapus. Topic mungkin masih dipakai artikel."
+              : "Delete failed. Topic may still be in use.",
+            lang
+          )
         );
       }
       setSuccess(isId ? "Topic dihapus." : "Topic deleted.");
@@ -206,7 +204,7 @@ export default function AdminInsightTopicsPage() {
       await load();
       setTimeout(() => setSuccess(null), 2500);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(getErrorMessage(err));
       setDeleteId(null);
     } finally {
       setSaving(false);

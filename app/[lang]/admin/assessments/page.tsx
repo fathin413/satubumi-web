@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, ExternalLink, Phone, Mail, User } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -69,12 +70,12 @@ export default function AdminAssessmentsPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
-          throw new Error(isId ? "Gagal memuat data" : "Failed to load");
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat data" : "Failed to load", lang));
         }
         const data = await res.json();
         setItems(normalizeList(data));
-      } catch (err: any) {
-        setError(err.message || "Error");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

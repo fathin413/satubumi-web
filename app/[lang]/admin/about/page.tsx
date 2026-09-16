@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import ImageCropModal from "@/components/ImageCropModal";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -199,7 +200,9 @@ export default function AdminAboutPage() {
     const load = async () => {
       try {
         const res = await fetch(`${API_URL}/articles/?lang=id`);
-        if (!res.ok) throw new Error("Failed to load");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat konten" : "Failed to load content", lang));
+        }
         const data = await res.json();
         const list: Article[] = Array.isArray(data) ? data : [];
         const about = list.filter((a) => a.category === "about");
@@ -290,8 +293,8 @@ export default function AdminAboutPage() {
           const teamData = await teamRes.json();
           setTeamMembers(Array.isArray(teamData) ? teamData : []);
         }
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -332,7 +335,9 @@ export default function AdminAboutPage() {
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`Gagal update ${key}`);
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, `Gagal update ${key}`, lang));
+      }
       return (await res.json()) as Article;
     }
 
@@ -344,7 +349,9 @@ export default function AdminAboutPage() {
       },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Gagal buat ${key}`);
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, `Gagal buat ${key}`, lang));
+    }
     const saved = (await res.json()) as Article;
     setIds((prev) => ({ ...prev, [key]: saved.id }));
     return saved;
@@ -358,8 +365,9 @@ export default function AdminAboutPage() {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok)
-      throw new Error(isId ? "Upload gambar gagal" : "Image upload failed");
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, isId ? "Upload gambar gagal" : "Image upload failed", lang));
+    }
   };
 
   const uploadTeamMemberImage = async (memberId: number, file: File) => {
@@ -370,12 +378,20 @@ export default function AdminAboutPage() {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok)
-      throw new Error(isId ? "Upload foto tim gagal" : "Team image upload failed");
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, isId ? "Upload foto tim gagal" : "Team image upload failed", lang));
+    }
     return await res.json();
   };
 
-  const promptDeleteImage = (key: IdKey, onClear: () => void) => {
+  const promptDeleteImage = (key: IdKey, slot: ImgSlot, onClear: () => void) => {
+    // Jika gambar baru yang belum disimpan ke server (hanya ada di lokal),
+    // langsung hapus preview tanpa perlu konfirmasi atau panggil API server.
+    if (slot.file) {
+      onClear();
+      return;
+    }
+
     const articleId = ids[key];
     if (!articleId) {
       onClear();
@@ -403,22 +419,15 @@ export default function AdminAboutPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const msg =
-          typeof data.detail === "string"
-            ? data.detail
-            : isId
-              ? "Gagal menghapus gambar"
-              : "Failed to delete image";
-        throw new Error(msg);
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus gambar" : "Failed to delete image", lang));
       }
 
       onClear();
       setSuccess(
         isId ? "Gambar berhasil dihapus!" : "Image successfully deleted!"
       );
-    } catch (err: any) {
-      setError(err.message || "Error");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setDeletingImg(null);
       setDeleteConfirm(null);
@@ -497,8 +506,8 @@ export default function AdminAboutPage() {
           : "All changes saved successfully!"
       );
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err: any) {
-      setError(err.message || "Error occurred during save");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, isId ? "Terjadi kesalahan saat menyimpan." : "Error occurred during save."));
     } finally {
       setSaving(false);
     }
@@ -541,7 +550,9 @@ export default function AdminAboutPage() {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error(isId ? "Gagal menyimpan anggota" : "Failed to save member");
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menyimpan anggota" : "Failed to save member", lang));
+      }
 
       let data = await res.json();
 
@@ -554,7 +565,7 @@ export default function AdminAboutPage() {
               image_url: updated.image_url,
             };
           }
-        } catch (imgErr: any) {
+        } catch (imgErr: unknown) {
           console.error("Team image upload error:", imgErr);
         }
       }
@@ -577,8 +588,8 @@ export default function AdminAboutPage() {
       setSuccess(
         isId ? "Anggota tim berhasil disimpan!" : "Team member saved!"
       );
-    } catch (err: any) {
-      setError(err.message || "Error");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSavingTeam(false);
     }
@@ -595,12 +606,14 @@ export default function AdminAboutPage() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token()}` },
       });
-      if (!res.ok) throw new Error(isId ? "Gagal menghapus anggota tim" : "Failed to delete team member");
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus anggota tim" : "Failed to delete team member", lang));
+      }
       
       setTeamMembers((prev) => prev.filter((item) => item.id !== memberToDelete));
       setSuccess(isId ? "Anggota tim berhasil dihapus!" : "Team member successfully deleted!");
-    } catch (err: any) {
-      setError(err.message || "Error");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setIsDeletingMember(false);
       setMemberToDelete(null);
@@ -675,7 +688,7 @@ export default function AdminAboutPage() {
             <button
               type="button"
               disabled={deletingImg === idKey}
-              onClick={() => promptDeleteImage(idKey, onClear)}
+              onClick={() => promptDeleteImage(idKey, slot, onClear)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600/90 backdrop-blur-md text-white text-sm font-bold rounded-xl hover:bg-rose-600 hover:scale-105 transition-all shadow-lg disabled:opacity-60"
             >
               <Trash2 className="w-4 h-4" />

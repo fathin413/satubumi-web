@@ -20,6 +20,7 @@ import ContentBlocksEditor, {
   serializeBlocks,
   type ContentBlock,
 } from "@/components/admin/ContentBlocksEditor";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -157,7 +158,9 @@ export default function InsightForm({ mode, initial }: Props) {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok) throw new Error(isId ? "Upload gambar gagal" : "Image upload failed");
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, isId ? "Upload gambar gagal" : "Image upload failed", lang));
+    }
   };
 
   const uploadMedia = async (articleId: number, f: File) => {
@@ -169,7 +172,7 @@ export default function InsightForm({ mode, initial }: Props) {
       body: fd,
     });
     if (!res.ok) {
-      throw new Error(isId ? "Upload gambar isi gagal" : "Inline image upload failed");
+      throw new Error(await extractErrorMessage(res, isId ? "Upload gambar isi gagal" : "Inline image upload failed", lang));
     }
     const data = await res.json();
     return data.url as string;
@@ -197,14 +200,14 @@ export default function InsightForm({ mode, initial }: Props) {
           headers: { Authorization: `Bearer ${token()}` },
         });
         if (!res.ok && res.status !== 404) {
-          throw new Error(isId ? "Gagal hapus cover" : "Failed to delete cover");
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal hapus cover" : "Failed to delete cover", lang));
         }
       }
       setPreview(null);
       setFile(null);
       setConfirmDeleteCover(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(getErrorMessage(err));
       setConfirmDeleteCover(false);
     } finally {
       setRemovingCover(false);
@@ -251,7 +254,9 @@ export default function InsightForm({ mode, initial }: Props) {
           },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error(isId ? "Gagal membuat insight" : "Create failed");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal membuat insight" : "Create failed", lang));
+        }
         id = (await res.json()).id;
       } else if (id) {
         const res = await fetch(`${API_URL}/articles/${id}`, {
@@ -262,7 +267,9 @@ export default function InsightForm({ mode, initial }: Props) {
           },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error(isId ? "Gagal menyimpan" : "Update failed");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal menyimpan insight" : "Update failed", lang));
+        }
       }
 
       if (file && id) await uploadImage(id, file);
@@ -282,14 +289,14 @@ export default function InsightForm({ mode, initial }: Props) {
           }),
         });
         if (!putRes.ok) {
-          throw new Error(isId ? "Gagal menyimpan gambar isi" : "Failed saving inline images");
+          throw new Error(await extractErrorMessage(putRes, isId ? "Gagal menyimpan gambar isi" : "Failed saving inline images", lang));
         }
       }
 
       setSuccess(isId ? "Insight berhasil disimpan!" : "Insight saved successfully!");
       setTimeout(() => router.push(`/${lang}/admin/insights`), 1200);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }

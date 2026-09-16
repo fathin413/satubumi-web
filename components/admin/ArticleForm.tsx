@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ImagePlus } from "lucide-react";
 import ImageCropModal from "../ImageCropModal";
 import RichTextEditor from "./RichTextEditor";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
@@ -130,13 +131,9 @@ export default function ArticleForm({ mode, articleId, initial }: Props) {
       }
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        let msg = isId ? "Gagal menyimpan" : "Failed to save";
-        if (typeof data.detail === "string") msg = data.detail;
-        else if (Array.isArray(data.detail)) {
-          msg = data.detail.map((d: any) => d.msg).join(", ");
-        }
-        throw new Error(msg);
+        throw new Error(
+          await extractErrorMessage(res, isId ? "Gagal menyimpan" : "Failed to save", lang)
+        );
       }
 
       const saved = await res.json();
@@ -153,9 +150,13 @@ export default function ArticleForm({ mode, articleId, initial }: Props) {
         });
         if (!imgRes.ok) {
           throw new Error(
-            isId
-              ? "Artikel tersimpan, upload gambar gagal"
-              : "Saved, but image upload failed"
+            await extractErrorMessage(
+              imgRes,
+              isId
+                ? "Artikel tersimpan, upload gambar gagal"
+                : "Saved, but image upload failed",
+              lang
+            )
           );
         }
       }
@@ -164,8 +165,8 @@ export default function ArticleForm({ mode, articleId, initial }: Props) {
       setTimeout(() => {
         router.push(`/${lang}/admin/articles`);
       }, 600);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSaving(false);
       setImageUploading(false);

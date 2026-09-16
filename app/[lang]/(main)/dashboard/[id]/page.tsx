@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const MapPreview = dynamic(() => import("../../../../../components/MapPreview"), {
   ssr: false,
@@ -25,7 +26,9 @@ export default function AssessmentDetailPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -40,12 +43,12 @@ export default function AssessmentDetailPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
-          throw new Error(isId ? "Assessment tidak ditemukan" : "Assessment not found");
+          throw new Error(await extractErrorMessage(res, isId ? "Assessment tidak ditemukan" : "Assessment not found", lang));
         }
         const json = await res.json();
         setData(json);
-      } catch (err: any) {
-        setError(err.message || "Error");
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -60,7 +63,9 @@ export default function AssessmentDetailPage() {
       const res = await fetch(`${API_URL}/reports/${id}/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(isId ? "Gagal mengunduh PDF" : "Failed to download PDF");
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal mengunduh PDF" : "Failed to download PDF", lang));
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -68,24 +73,29 @@ export default function AssessmentDetailPage() {
       a.download = `Satubumi-Report-${id}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(isId ? "Hapus assessment ini?" : "Delete this assessment?")) return;
+  const executeDelete = async () => {
     setDeleting(true);
+    setError(null);
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(`${API_URL}/assessments/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(isId ? "Gagal menghapus" : "Failed to delete");
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus assessment" : "Failed to delete assessment", lang));
+      }
+      setShowDeleteModal(false);
       router.push(`/${lang}/dashboard`);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      setShowDeleteModal(false);
+      setError(getErrorMessage(err));
+    } finally {
       setDeleting(false);
     }
   };
@@ -107,11 +117,11 @@ export default function AssessmentDetailPage() {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <main className="min-h-screen bg-[#f8faf9] flex items-center justify-center px-6">
         <div className="text-center">
-          <p className="text-rose-600 font-medium mb-6">{error || "Not found"}</p>
+          <p className="text-rose-600 font-medium mb-6">{error || (isId ? "Assessment tidak ditemukan" : "Assessment not found")}</p>
           <Link href={`/${lang}/dashboard`} className="text-emerald-700 font-bold hover:underline">
             {isId ? "Kembali ke Dashboard" : "Back to Dashboard"}
           </Link>
@@ -121,7 +131,102 @@ export default function AssessmentDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8faf9] pt-32 pb-24 px-6">
+    <main className="min-h-screen bg-[#f8faf9] pt-32 pb-24 px-6 relative font-sans">
+      {/* GLOBAL POPUP (SUCCESS / ERROR) */}
+      {(error || success) && !showDeleteModal && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 text-center relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            {error ? (
+              <>
+                <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-rose-100 relative">
+                  <div className="absolute inset-0 rounded-full border-2 border-rose-200 animate-ping opacity-50 duration-1000" />
+                  <AlertTriangle className="w-8 h-8 text-rose-500 relative z-10" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2 tracking-tight">
+                  {isId ? "Terjadi Kesalahan" : "Action Failed"}
+                </h3>
+                <p className="text-[13px] text-slate-500 font-medium mb-6 leading-relaxed px-2">
+                  {error}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="w-full py-3 bg-rose-50 border border-rose-100 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-all active:scale-95"
+                >
+                  {isId ? "Tutup" : "Close"}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5 border border-emerald-100 relative">
+                  <div className="absolute inset-0 rounded-full border-2 border-emerald-200 animate-ping opacity-50 duration-1000" />
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 relative z-10" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2 tracking-tight">
+                  {isId ? "Berhasil!" : "Success!"}
+                </h3>
+                <p className="text-[13px] text-slate-500 font-medium mb-6 leading-relaxed px-2">
+                  {success}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSuccess(null)}
+                  className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-md active:scale-95"
+                >
+                  {isId ? "Tutup" : "Close"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden p-8 text-center relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-rose-100 relative">
+              <div className="absolute inset-0 rounded-2xl border-2 border-rose-200 animate-ping opacity-50 duration-1000" />
+              <AlertTriangle className="w-8 h-8 text-rose-500 relative z-10" />
+            </div>
+            <h3 className="text-xl font-extrabold text-slate-800 mb-2">
+              {isId ? "Hapus Assessment Ini?" : "Delete This Assessment?"}
+            </h3>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed px-2">
+              {isId ? "Apakah Anda yakin ingin menghapus assessment untuk" : "Are you sure you want to delete assessment for"}{" "}
+              <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md inline-block mx-1 truncate max-w-[200px] align-bottom">
+                {data.location_name || data.locationName || "Project"}
+              </span>
+              ? {isId ? "Tindakan ini tidak dapat dibatalkan." : "This action cannot be undone."}
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 py-3 bg-slate-50 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-colors disabled:opacity-50 active:scale-95"
+              >
+                {isId ? "Batalkan" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={executeDelete}
+                disabled={deleting}
+                className="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 disabled:opacity-80 flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-600/20 active:scale-95"
+              >
+                {deleting ? (
+                  <div className="w-4 h-4 border-2 border-rose-200 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    {isId ? "Ya, Hapus" : "Yes, Delete"}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-[1000px] mx-auto">
         
         {/* Back */}
@@ -160,7 +265,8 @@ export default function AssessmentDetailPage() {
               PDF
             </button>
             <button
-              onClick={handleDelete}
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
               disabled={deleting}
               className="inline-flex items-center gap-2 px-5 py-3 border border-rose-200 text-rose-600 text-sm font-bold rounded-2xl hover:bg-rose-50 transition-colors disabled:opacity-50"
             >

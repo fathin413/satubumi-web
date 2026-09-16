@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
 } from "lucide-react";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -81,13 +82,17 @@ export default function AdminInsightsListPage() {
       );
       if (!res.ok) {
         throw new Error(
-          isId ? "Gagal memuat insights" : "Failed to load insights"
+          await extractErrorMessage(
+            res,
+            isId ? "Gagal memuat insights" : "Failed to load insights",
+            lang
+          )
         );
       }
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error");
+      setError(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -129,12 +134,17 @@ export default function AdminInsightsListPage() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token()}` },
       });
-      if (!res.ok) throw new Error(isId ? "Gagal menghapus" : "Delete failed");
+      if (!res.ok) {
+        throw new Error(
+          await extractErrorMessage(res, isId ? "Gagal menghapus" : "Delete failed", lang)
+        );
+      }
       setItems((prev) => prev.filter((x) => x.id !== toDelete.id));
       setSuccess(isId ? "Insight berhasil dihapus." : "Insight deleted.");
       setToDelete(null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Error");
+      setError(getErrorMessage(e));
+      setToDelete(null);
     } finally {
       setDeleting(false);
     }

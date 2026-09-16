@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, Clock, ArrowUpRight, Tag, User as UserIcon } from "lucide-react";
 import ScrollReveal from "../../../../../components/ScrollReveal";
 import { parseBlocks } from "@/components/admin/ContentBlocksEditor";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
@@ -337,7 +338,7 @@ export default function InsightDetailPage() {
                                     [&_strong]:font-bold [&_b]:font-bold
                                     [&_em]:italic [&_i]:italic
                                     [&_a]:text-emerald-600 [&_a]:underline hover:[&_a]:text-emerald-700"
-                          dangerouslySetInnerHTML={{ __html: html }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
                         />
                       );
                     }

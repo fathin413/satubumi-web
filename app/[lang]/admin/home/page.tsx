@@ -15,6 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import ImageCropModal from "@/components/ImageCropModal";
+import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
@@ -150,7 +151,9 @@ export default function AdminHomePage() {
     const load = async () => {
       try {
         const res = await fetch(`${API_URL}/articles/?lang=id`);
-        if (!res.ok) throw new Error("Failed to load");
+        if (!res.ok) {
+          throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat konten" : "Failed to load content", lang));
+        }
         const data = await res.json();
         const list: Article[] = Array.isArray(data) ? data : [];
         const find = (slug: string) => list.find((a) => a.slug === slug);
@@ -208,8 +211,8 @@ export default function AdminHomePage() {
           setProductsDescEn(plain(products.content_en));
           setProductsImg({ preview: resolveImageUrl(products.image_url), file: null });
         }
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -249,7 +252,9 @@ export default function AdminHomePage() {
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`Gagal update ${key}`);
+      if (!res.ok) {
+        throw new Error(await extractErrorMessage(res, `Gagal update ${key}`, lang));
+      }
       return (await res.json()) as Article;
     }
 
@@ -261,7 +266,9 @@ export default function AdminHomePage() {
       },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Gagal buat ${key}`);
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, `Gagal buat ${key}`, lang));
+    }
     const saved = (await res.json()) as Article;
     setIds((prev) => ({ ...prev, [key]: saved.id }));
     return saved;
@@ -275,11 +282,20 @@ export default function AdminHomePage() {
       headers: { Authorization: `Bearer ${token()}` },
       body: fd,
     });
-    if (!res.ok) throw new Error(isId ? "Upload gambar gagal" : "Image upload failed");
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, isId ? "Upload gambar gagal" : "Image upload failed", lang));
+    }
   };
 
   // Memicu pop-up kustom (bukan alert bawaan browser)
-  const promptDeleteImage = (key: IdKey, onClear: () => void) => {
+  const promptDeleteImage = (key: IdKey, slot: ImgSlot, onClear: () => void) => {
+    // Jika gambar baru yang belum disimpan ke server (hanya ada di lokal),
+    // langsung hapus preview tanpa perlu konfirmasi atau panggil API server.
+    if (slot.file) {
+      onClear();
+      return;
+    }
+
     const articleId = ids[key];
     if (!articleId) {
       onClear();
@@ -307,20 +323,13 @@ export default function AdminHomePage() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const msg =
-          typeof data.detail === "string"
-            ? data.detail
-            : isId
-            ? "Gagal menghapus gambar"
-            : "Failed to delete image";
-        throw new Error(msg);
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus gambar" : "Failed to delete image", lang));
       }
 
       onClear();
       setSuccess(isId ? "Gambar berhasil dihapus!" : "Image successfully deleted!");
-    } catch (err: any) {
-      setError(err.message || "Error");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setDeletingImg(null);
       setDeleteConfirm(null);
@@ -395,8 +404,8 @@ export default function AdminHomePage() {
       setProductsImg((p) => ({ ...p, file: null }));
 
       setSuccess(isId ? "Semua perubahan berhasil disimpan!" : "All changes saved successfully!");
-    } catch (err: any) {
-      setError(err.message || "An error occurred while saving.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, isId ? "Terjadi kesalahan saat menyimpan." : "An error occurred while saving."));
     } finally {
       setSaving(false);
     }
@@ -453,7 +462,7 @@ export default function AdminHomePage() {
             <button
               type="button"
               disabled={deletingImg === idKey}
-              onClick={() => promptDeleteImage(idKey, onClear)}
+              onClick={() => promptDeleteImage(idKey, slot, onClear)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600/90 backdrop-blur-md text-white text-sm font-bold rounded-xl hover:bg-rose-600 hover:scale-105 transition-all shadow-lg disabled:opacity-60"
             >
               <Trash2 className="w-4 h-4" />
