@@ -123,6 +123,87 @@ function RelatedCard({ item, lang, isId }: { item: Article; lang: string; isId: 
   );
 }
 
+function AutoFitTitle({
+  title,
+  maxHeight = 240,
+}: {
+  title: string;
+  maxHeight?: number;
+}) {
+  const textRef = useRef<HTMLHeadingElement>(null);
+
+  const getBaseSize = (len: number, isXl: boolean) => {
+    if (len <= 45) return isXl ? 60 : 54;
+    if (len <= 75) return isXl ? 50 : 45;
+    if (len <= 110) return isXl ? 42 : 38;
+    if (len <= 150) return isXl ? 35 : 31;
+    return isXl ? 28 : 24;
+  };
+
+  const [fontSize, setFontSize] = useState<number>(() => {
+    const len = title?.length || 0;
+    return getBaseSize(len, true);
+  });
+
+  useEffect(() => {
+    const computeFit = () => {
+      if (!textRef.current) return;
+
+      if (window.innerWidth < 1024) {
+        textRef.current.style.fontSize = "";
+        textRef.current.style.lineHeight = "";
+        return;
+      }
+
+      const isXl = window.innerWidth >= 1280;
+      const len = title?.length || 0;
+      let size = getBaseSize(len, isXl);
+      const minSize = 20;
+      const limitHeight = maxHeight > 0 ? maxHeight : 240;
+
+      textRef.current.style.fontSize = `${size}px`;
+      textRef.current.style.lineHeight = "1.25";
+
+      let iterations = 0;
+      while (size > minSize && textRef.current.scrollHeight > limitHeight && iterations < 80) {
+        size -= 0.5;
+        textRef.current.style.fontSize = `${size}px`;
+        iterations++;
+      }
+
+      setFontSize(size);
+    };
+
+    computeFit();
+    window.addEventListener("resize", computeFit);
+
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.ready.then(computeFit);
+    }
+
+    return () => {
+      window.removeEventListener("resize", computeFit);
+    };
+  }, [title, maxHeight]);
+
+  return (
+    <h1
+      ref={textRef}
+      className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-wide leading-[1.22] break-words"
+      style={
+        typeof window !== "undefined" && window.innerWidth >= 1024
+          ? {
+              fontSize: `${fontSize}px`,
+              lineHeight: 1.22,
+            }
+          : undefined
+      }
+    >
+      {title}
+    </h1>
+  );
+}
+
 export default function InsightDetailPage() {
   const params = useParams();
   const lang = (params?.lang as string) || "en";
@@ -134,6 +215,69 @@ export default function InsightDetailPage() {
   const [popularArticles, setPopularArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const viewedRef = useRef(false);
+
+  const [maxTitleHeight, setMaxTitleHeight] = useState<number>(240);
+  const [titleMarginTop, setTitleMarginTop] = useState<number>(0);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const backBtnRef = useRef<HTMLDivElement>(null);
+  const titleContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const measureBounds = () => {
+      if (typeof window === "undefined" || window.innerWidth < 1024) return;
+      if (coverRef.current && sectionRef.current && backBtnRef.current) {
+        const coverRect = coverRef.current.getBoundingClientRect();
+        const sectionRect = sectionRef.current.getBoundingClientRect();
+        const backBtnRect = backBtnRef.current.getBoundingClientRect();
+
+        const topBoundY = coverRect.top;
+        
+        // Margin aman diperkecil sedikit agar sesuai dengan padding bawah yang baru
+        const bottomBoundY = sectionRect.bottom - 60;
+        
+        const totalAllowedHeight = Math.max(100, Math.floor(bottomBoundY - topBoundY));
+
+        // Menurunkan titik mulai ideal dari 0.38 (38%) menjadi 0.45 (45%)
+        const preferredStartY = coverRect.top + coverRect.height * 0.45;
+        const defaultMt = Math.max(12, Math.floor(preferredStartY - backBtnRect.bottom));
+        const heightFromPreferred = Math.max(80, Math.floor(bottomBoundY - preferredStartY));
+
+        let textHeight = 0;
+        if (titleContainerRef.current) {
+          const h1 = titleContainerRef.current.querySelector("h1");
+          if (h1) textHeight = h1.scrollHeight;
+        }
+
+        if (textHeight > 0 && textHeight <= heightFromPreferred) {
+          setTitleMarginTop(defaultMt);
+          setMaxTitleHeight(heightFromPreferred);
+        } else if (textHeight > 0 && textHeight <= totalAllowedHeight) {
+          const neededStartY = Math.max(topBoundY, bottomBoundY - textHeight);
+          const shiftMt = Math.max(12, Math.floor(neededStartY - backBtnRect.bottom));
+          setTitleMarginTop(shiftMt);
+          setMaxTitleHeight(totalAllowedHeight);
+        } else {
+          const minMt = Math.max(12, Math.floor(topBoundY - backBtnRect.bottom));
+          setTitleMarginTop(minMt);
+          setMaxTitleHeight(totalAllowedHeight);
+        }
+      }
+    };
+
+    measureBounds();
+    window.addEventListener("resize", measureBounds);
+    const t1 = setTimeout(measureBounds, 100);
+    const t2 = setTimeout(measureBounds, 300);
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.ready.then(measureBounds);
+    }
+    return () => {
+      window.removeEventListener("resize", measureBounds);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [article?.title]);
 
   useEffect(() => {
     const load = async () => {
@@ -156,12 +300,10 @@ export default function InsightDetailPage() {
           const publishedList = list.filter((a) => a.status === "published");
           const others = publishedList.filter((a) => a.slug !== slug);
           
-          // Set Related Articles
           const sameTopic = others.filter((a) => a.topic === found.topic);
           const diffTopic = others.filter((a) => a.topic !== found.topic);
           setRelatedArticles([...sameTopic, ...diffTopic].slice(0, 3));
 
-          // Set Popular Articles (Diurutkan berdasarkan view_count tertinggi)
           const popular = [...others]
             .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
             .slice(0, 3);
@@ -187,7 +329,7 @@ export default function InsightDetailPage() {
                 );
               }
             } catch {
-              // Abaikan jika error
+              // Abaikan
             }
           }
         }
@@ -244,44 +386,55 @@ export default function InsightDetailPage() {
     <main className="bg-[#FAFAFA] min-h-screen pb-28 font-sans selection:bg-emerald-200 selection:text-emerald-950">
       
       {/* ================= HERO SECTION ================= */}
-      <section className="bg-emerald-950 pt-20 pb-12 md:pt-24 md:pb-14 px-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-900/40 rounded-full blur-[100px] pointer-events-none" />
+      <section
+        ref={sectionRef}
+        // Mengurangi padding bottom untuk mengurangi bg hijaunya sedikit
+        className="bg-emerald-950 pt-12 pb-4 md:pt-16 md:pb-6 lg:pt-20 lg:pb-8 px-8 md:px-12 lg:px-16 xl:px-20 relative z-10"
+      >
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-900/40 rounded-full blur-[100px]" />
+        </div>
 
         <div className="max-w-[1440px] mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10 lg:items-start">
             
-            {/* KIRI: Judul Lengkap */}
-            <div>
-              <Link
-                href={`/${lang}/insights`}
-                className="inline-flex items-center gap-2 text-[12px] font-bold text-emerald-400 hover:text-white mb-8 transition-colors uppercase tracking-widest"
+            <div className="flex flex-col min-h-0 lg:pr-2 xl:pr-4">
+              <div ref={backBtnRef} className="pt-6 lg:pt-8">
+                <Link
+                  href={`/${lang}/insights`}
+                  className="inline-flex items-center gap-2 text-[12px] md:text-[13px] font-bold text-emerald-400 hover:text-white transition-colors uppercase tracking-widest"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {isId ? "Kembali" : "Back"}
+                </Link>
+              </div>
+
+              <div
+                ref={titleContainerRef}
+                className="flex flex-col min-h-0 overflow-hidden py-1"
+                style={{
+                  marginTop: titleMarginTop > 0 ? `${titleMarginTop}px` : "2.5rem",
+                  maxHeight: maxTitleHeight > 0 ? `${maxTitleHeight}px` : undefined,
+                }}
               >
-                <ArrowLeft className="w-4 h-4" />
-                {isId ? "Kembali" : "Back"}
-              </Link>
-              
-              <ScrollReveal>
-                {/* PEMBARUAN: 
-                    - tracking-wide: Jarak antar huruf diperlebar
-                    - leading-[1.45]: Jarak antar baris diperlebar
-                    - lg:pr-12: Padding kanan agar teks terpotong turun ke bawah sebelum mendekati gambar 
-                */}
-                <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white tracking-wide leading-[1.45] lg:pr-12 mb-6 break-words">
-                  {article.title}
-                </h1>
-              </ScrollReveal>
+                <ScrollReveal className="flex flex-col min-h-0">
+                  <AutoFitTitle title={article.title} maxHeight={maxTitleHeight} />
+                </ScrollReveal>
+              </div>
             </div>
 
-            {/* KANAN: Gambar Cover */}
-            <div className="w-full lg:mt-[52px]">
-              <ScrollReveal delay="delay-100">
-                <div className="w-full aspect-[4/3] md:aspect-video lg:aspect-[4/3] rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 relative">
+            <div
+              ref={coverRef}
+              className="w-full translate-y-[20%] lg:-mr-6 xl:-mr-10 shrink-0 flex justify-end items-start relative z-20"
+            >
+              <ScrollReveal delay="delay-100" className="w-full flex justify-end items-start">
+                <div className="w-full max-w-[750px] xl:max-w-[840px] aspect-[16/9] h-auto self-start rounded-[2rem] overflow-hidden shadow-2xl border border-white/15 relative bg-emerald-900/30">
                   <img
                     src={img}
                     alt={article.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/40 to-transparent" />
                 </div>
               </ScrollReveal>
             </div>
@@ -291,10 +444,9 @@ export default function InsightDetailPage() {
       </section>
 
       {/* ================= BODY CONTENT & SIDEBAR ================= */}
-      <section className="max-w-[1440px] mx-auto px-6 pt-10 pb-16 lg:pt-14 lg:pb-24">
+      <section className="max-w-[1440px] mx-auto px-8 md:px-12 lg:px-16 xl:px-20 pt-16 md:pt-20 lg:pt-28 xl:pt-32 pb-16 lg:pb-24 relative z-0">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           
-          {/* KIRI: Teks Deskripsi (lg:col-span-8) */}
           <div className="lg:col-span-8">
             <ScrollReveal>
               <div className="w-full space-y-10">
@@ -302,12 +454,12 @@ export default function InsightDetailPage() {
                   if (block.type === "image" && block.url) {
                     const caption = block.captionId || block.captionEn || "";
                     return (
-                      <figure key={idx} className="my-4">
-                        <div className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/70 bg-slate-100">
+                      <figure key={idx} className="my-8">
+                        <div className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/70 bg-slate-50/50 flex justify-center items-center">
                           <img
                             src={resolveImageUrl(block.url) || block.url}
                             alt={caption || article.title}
-                            className="w-full max-h-[520px] object-cover"
+                            className="max-w-full h-auto rounded-[1.5rem] block"
                           />
                         </div>
                         {caption ? (
@@ -365,18 +517,15 @@ export default function InsightDetailPage() {
             </ScrollReveal>
           </div>
 
-          {/* KANAN: Sidebar Deskripsi Info Artikel & Popular Insights (lg:col-span-4) */}
           <div className="lg:col-span-4">
             <div className="sticky top-[110px] flex flex-col gap-6 h-fit">
               
-              {/* Card 1: Informasi Artikel */}
               <ScrollReveal delay="delay-200">
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
                   <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
                     {isId ? "Informasi Artikel" : "Article Information"}
                   </h3>
 
-                  {/* Author Info */}
                   <div className="flex flex-col mb-8">
                     <div className="w-full aspect-square rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm mb-5">
                       {article.author_profile_image ? (
@@ -399,7 +548,6 @@ export default function InsightDetailPage() {
                     </div>
                   </div>
 
-                  {/* List Informasi Tambahan */}
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2.5 text-slate-500">
@@ -434,7 +582,6 @@ export default function InsightDetailPage() {
                 </div>
               </ScrollReveal>
 
-              {/* Card 2 - Popular Insights */}
               {popularArticles.length > 0 && (
                 <ScrollReveal delay="delay-300">
                   <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">

@@ -227,11 +227,11 @@ export default function ContentBlocksEditor({
           ) : (
             <div className="p-4 space-y-3">
               {b.url ? (
-                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-4 border-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] group bg-slate-100">
+                <div className="relative w-full rounded-2xl overflow-hidden border-4 border-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] group bg-slate-100 flex items-center justify-center p-2 min-h-[160px]">
                   <img
                     src={b.url}
                     alt=""
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="max-w-full h-auto max-h-[500px] object-contain rounded-xl transition-transform duration-700 group-hover:scale-[1.01]"
                   />
                   <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/30 flex items-start justify-end gap-2 p-4 opacity-0 group-hover:opacity-100 transition-colors duration-300">
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 text-slate-700 text-sm font-bold rounded-xl cursor-pointer shadow-lg transition-transform hover:scale-105">

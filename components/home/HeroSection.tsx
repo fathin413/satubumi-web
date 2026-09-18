@@ -2,11 +2,68 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
-
+import { useState, useEffect, useRef } from "react";
 import ScrollReveal from "../ScrollReveal";
-import AutoShrinkText from "./AutoShrinkText";
 
+// =====================================================================
+// KOMPONEN KHUSUS: Mengunci Teks 1 Baris & Mengecilkan Font Otomatis
+// =====================================================================
+function FitOneLineText({ text, className }: { text: string; className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const resizeTextToFit = () => {
+      if (!containerRef.current || !textRef.current) return;
+      
+      // 1. Reset font-size ke ukuran bawaan dari kelas Tailwind (clamp)
+      textRef.current.style.fontSize = "";
+      
+      const containerWidth = containerRef.current.clientWidth;
+      const textWidth = textRef.current.scrollWidth;
+      
+      // 2. Jika lebar teks melebihi lebar kontainer, kecilkan font-nya
+      if (textWidth > containerWidth && containerWidth > 0) {
+        // Ambil ukuran font saat ini (dalam pixel)
+        const currentFontSize = parseFloat(window.getComputedStyle(textRef.current).fontSize);
+        
+        // Cari rasio penyusutan yang dibutuhkan
+        const ratio = containerWidth / textWidth;
+        
+        // Terapkan ukuran baru (dikurangi 2px sebagai jarak aman/buffer)
+        const newSize = (currentFontSize * ratio) - 2;
+        textRef.current.style.fontSize = `${newSize}px`;
+      }
+    };
+
+    resizeTextToFit();
+    window.addEventListener("resize", resizeTextToFit);
+    
+    // Pastikan font sudah termuat sebelum kalkulasi dijalankan ulang
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.ready.then(resizeTextToFit);
+    }
+    
+    return () => window.removeEventListener("resize", resizeTextToFit);
+  }, [text]);
+
+  return (
+    // overflow-visible memastikan ekor huruf (seperti 'g' atau 'y') tidak terpotong
+    <div ref={containerRef} className="w-full flex justify-center items-center overflow-visible">
+      {/* whitespace-nowrap adalah kunci absolut agar teks HARAM turun ke baris kedua */}
+      <span 
+        ref={textRef} 
+        className={`whitespace-nowrap inline-block px-2 pb-3 md:pb-4 ${className || ""}`}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+// =====================================================================
+// MAIN HERO SECTION COMPONENT
+// =====================================================================
 interface HeroSectionProps {
   lang: string;
   isId: boolean;
@@ -87,7 +144,7 @@ export default function HeroSection({
       {/* ================= CONTENT CONTAINER ================= */}
       {/* my-auto memastikan konten selalu vertikal di tengah layar 100vh */}
       <div className="relative z-30 w-full max-w-[1440px] mx-auto px-4 lg:px-12 flex flex-col items-center justify-center text-center my-auto">
-        <ScrollReveal baseClass="opacity-0 translate-y-12" className="flex flex-col items-center relative w-full overflow-hidden">
+        <ScrollReveal baseClass="opacity-0 translate-y-12" className="flex flex-col items-center relative w-full overflow-visible">
           
           {/* Badge / Eyebrow */}
           <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-emerald-500/30 bg-[#052e16]/50 backdrop-blur-md mb-8 shadow-sm">
@@ -97,15 +154,18 @@ export default function HeroSection({
             </span>
           </div>
 
-          {/* HEADLINE */}
-          <h1 className="w-full max-w-full flex flex-col items-center font-extrabold text-white leading-[1.05] drop-shadow-2xl mb-8">
-            <AutoShrinkText className="font-extrabold tracking-tight text-[clamp(2rem,7vw,6.5rem)] text-white">
-              {title}
-            </AutoShrinkText>
+          {/* HEADLINE: Memanggil komponen FitOneLineText yang menjamin 1 baris */}
+          <h1 className="w-full max-w-full flex flex-col items-center font-extrabold text-white leading-[0.9] drop-shadow-2xl mb-8">
+            <FitOneLineText 
+              text={title} 
+              className="font-extrabold tracking-tight text-[clamp(2rem,7vw,6.5rem)] text-white" 
+            />
+            
             {highlight && (
-              <AutoShrinkText className="font-serif italic font-light text-emerald-400 drop-shadow-xl mt-1 md:mt-3 text-[clamp(2.5rem,8vw,7.5rem)] tracking-tight">
-                {highlight}
-              </AutoShrinkText>
+              <FitOneLineText 
+                text={highlight} 
+                className="font-serif italic font-light text-emerald-400 drop-shadow-xl -mt-2 md:-mt-4 text-[clamp(2.5rem,8vw,7.5rem)] tracking-tight" 
+              />
             )}
           </h1>
 

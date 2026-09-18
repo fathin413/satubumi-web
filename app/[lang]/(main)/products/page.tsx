@@ -17,6 +17,10 @@ import {
   Leaf,
   LineChart,
   Globe2,
+  Users,
+  Sparkles,
+  Target,
+  CheckCircle2,
 } from "lucide-react";
 
 // Komponen Reveal Inline untuk Animasi Scroll
@@ -83,59 +87,85 @@ export default function ProductsPage() {
     { icon: Globe2, title: "Spatial Risk", value: "Low" },
   ];
 
-  const monitorPoints = isId
+  const fiveQuestions = isId
+    ? [
+        { word: "Where?", desc: "Di mana batas & lokasi proyek?" },
+        { word: "What?", desc: "Apa kejadian & aksi di tapak?" },
+        { word: "When?", desc: "Kapan perubahan berlangsung?" },
+        { word: "How much?", desc: "Seberapa besar capaiannya?" },
+        { word: "Progress?", desc: "Apakah sesuai target proyek?" },
+      ]
+    : [
+        { word: "Where?", desc: "Where is the project boundary?" },
+        { word: "What?", desc: "What activities are happening?" },
+        { word: "When?", desc: "When did shifts take place?" },
+        { word: "How much?", desc: "Quantified metric outcomes" },
+        { word: "Progress?", desc: "Is delivery on milestone?" },
+      ];
+
+  const monitorModules = isId
     ? [
         {
-          icon: Map,
-          title: "Peta sebagai pusat",
-          body: "Batas proyek, plot, dan titik tanam dalam satu layar. Klien tidak perlu ahli GIS.",
-        },
-        {
           icon: Trees,
-          title: "Pohon yang masih hidup",
-          body: "Bukan hanya ‘sudah ditanam’. Survival, pertumbuhan, dan kondisi tampil sebagai angka.",
+          title: "Tree Survival & Pertumbuhan",
+          body: "Bukan hanya 'jumlah ditanam'. Sistem menghitung survival rate %, pohon hidup/mati, tinggi, dan DBH per pohon secara akurat.",
         },
         {
           icon: Bell,
-          title: "Alert, bukan tebak-tebakan",
-          body: "Survival rendah, pemantauan telat, anomali tapak — sistem yang menegur, bukan folder yang menunggu dibuka.",
+          title: "Early Warning & Environmental Alert",
+          body: "Peringatan proaktif instan jika terdeteksi hotspot api, deforestasi, anomali tutupan lahan, atau pemantauan yang telat.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Digital Evidence (Audit-Ready)",
+          body: "Integritas data mutlak: WHO + WHERE + WHEN + WHAT + EVIDENCE. Foto ber-geotag GPS dari ranger lapangan siap untuk verifikasi.",
         },
         {
           icon: Satellite,
-          title: "Lapangan + satelit",
-          body: "Catatan petugas bertemu overlay spasial. Dua sumber, satu proyek.",
+          title: "Multi-Year Satellite Time Series",
+          body: "Bandingkan tutupan hutan dari waktu ke waktu (2022 → 2024 → 2026). Perpaduan citra satelit resolusi tinggi dan verifikasi darat.",
         },
         {
-          icon: FileText,
-          title: "Laporan untuk direksi",
-          body: "Ringkasan yang bisa diunduh. Karbon di sini estimasi pemantauan, bukan kredit.",
+          icon: Leaf,
+          title: "Pemetaan Biodiversitas & Satwa",
+          body: "Pencatatan dan pemetaan titik sebaran flora-fauna langka secara spasial dan temporal lengkap dengan foto per plot monitoring.",
+        },
+        {
+          icon: Users,
+          title: "Dampak Komunitas & Sosial",
+          body: "Pantau desa binaan, jumlah penerima manfaat (beneficiaries), kelompok agroforestry, dan dampak ekonomi masyarakat lokal.",
         },
       ]
     : [
         {
-          icon: Map,
-          title: "Map first",
-          body: "Boundaries, plots, and planting points on one screen. Clients should not need to be GIS analysts.",
-        },
-        {
           icon: Trees,
-          title: "Trees that still stand",
-          body: "Not just ‘planted’. Survival, growth, and condition as numbers a director can read.",
+          title: "Tree Survival & Growth Tracking",
+          body: "Beyond 'trees planted', track live vs dead counts, survival rate %, height, and DBH per tree with continuous growth analytics.",
         },
         {
           icon: Bell,
-          title: "Alerts, not guesswork",
-          body: "Low survival, overdue monitoring, site anomalies — the system taps you. The folder does not.",
+          title: "Early Warning & Environmental Alerts",
+          body: "Proactive automated notifications for fire hotspots, deforestation alerts, land cover shifts, and overdue field monitoring.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Audit-Ready Digital Evidence",
+          body: "Strict data integrity: WHO + WHERE + WHEN + WHAT + EVIDENCE. Geotagged field photos and GPS logs ready for external audits.",
         },
         {
           icon: Satellite,
-          title: "Field plus satellite",
-          body: "Officer notes meet spatial overlay. Two sources, one project.",
+          title: "Multi-Year Satellite Time Series",
+          body: "Track landscape changes across years (2022 → 2024 → 2026) uniting high-res satellite monitoring with ground-truthing.",
         },
         {
-          icon: FileText,
-          title: "A report for the board",
-          body: "A snapshot you can export. Carbon here is a monitoring estimate, not a credit.",
+          icon: Leaf,
+          title: "Biodiversity & Wildlife Mapping",
+          body: "Record and map endangered flora and fauna sightings spatially and temporally with photos, plot locations, and habitat status.",
+        },
+        {
+          icon: Users,
+          title: "Community & Socio-Economic Impact",
+          body: "Measure assisted villages, beneficiary counts, agroforestry groups, and local livelihood creation alongside ecological impact.",
         },
       ];
 
@@ -269,77 +299,121 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* ========== MONITOR (FULL SCREEN SECTION) ========== */}
-      <section className="relative bg-white min-h-screen flex flex-col border-t border-slate-200/60 overflow-hidden">
-        <div className="grid lg:grid-cols-2 flex-1 w-full h-full">
-          
-          {/* KONTEN KIRI */}
-          <div className="px-6 md:px-12 xl:px-24 py-20 flex flex-col justify-center bg-white">
-            <Reveal slide="up" delay={0}>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-emerald-700 mb-4">
-                {isId ? "Produk 02" : "Product 02"}
-              </p>
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-emerald-950 leading-tight mb-5">
-                Satubumi Monitor
-              </h2>
-            </Reveal>
-            
-            <Reveal slide="up" delay={150}>
-              <p className="text-[18px] font-semibold text-emerald-900/80 mb-4 max-w-lg">
-                {isId
-                  ? "Mata digital proyek. Klien memantau dari jauh."
-                  : "The project’s digital eye. Clients watch from afar."}
-              </p>
-              <p className="text-[15px] text-emerald-900/60 font-medium leading-relaxed max-w-xl mb-10">
-                {isId
-                  ? "Where, what, when, how much, progress — tanpa terbang ke tapak. Petugas mengisi data. Klien melihat kondisi."
-                  : "Where, what, when, how much, progress — without flying to site. Officers enter data. Clients see condition."}
-              </p>
-            </Reveal>
+      {/* ========== MONITOR (SELURUH SECTION MENGIKUTI UKURAN GAMBAR) ========== */}
+      <section id="monitor" className="relative bg-white border-t border-slate-200/60 overflow-hidden">
+        <div className="relative w-full flex flex-col lg:block">
 
-            <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-8 max-w-2xl">
-              {monitorPoints.map((item, i) => {
-                const Icon = item.icon;
-                return (
-                  <Reveal key={item.title} slide="up" delay={300 + (i * 100)} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-extrabold text-emerald-950 leading-tight mb-1.5">
-                        {item.title}
-                      </p>
-                      <p className="text-[13px] text-emerald-900/60 font-medium leading-relaxed">
-                        {item.body}
-                      </p>
-                    </div>
-                  </Reveal>
-                );
-              })}
-            </ul>
+          {/* KONTEN KIRI (Mengikuti Tinggi Gambar & Teratur dengan Scroll Vertikal yang Aman) */}
+          <div className="w-full lg:w-1/2 lg:absolute lg:inset-y-0 lg:left-0 bg-white overflow-y-auto z-10 px-6 sm:px-10 md:px-12 lg:px-8 xl:px-14 2xl:px-20 pt-10 sm:pt-12 lg:pt-14 pb-8 sm:pb-10 lg:pb-12">
+            <div className="min-h-full flex flex-col justify-center my-auto">
+              
+              {/* Header Tag & Title */}
+              <Reveal slide="up" delay={0}>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.2em] mb-2.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  {isId ? "Produk 02 • Digital Monitoring Platform" : "Product 02 • Digital Monitoring Platform"}
+                </div>
+                <h2 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-emerald-950 leading-tight mb-2 sm:mb-3">
+                  Satubumi Monitor
+                </h2>
+              </Reveal>
+              
+              {/* Tagline & Nilai Utama */}
+              <Reveal slide="up" delay={100}>
+                <p className="text-[14px] sm:text-[16px] xl:text-[17px] font-semibold text-emerald-900/85 leading-snug mb-1.5 sm:mb-2 max-w-2xl">
+                  {isId
+                    ? "Mata digital proyek berbasis alam. Pantau perkembangan, integritas tapak, dan pencapaian target dari jauh tanpa harus terbang ke lokasi."
+                    : "The digital eye for nature-based projects. Monitor site integrity, progress, and target delivery from afar without flying to site."}
+                </p>
+                <p className="text-[12px] sm:text-[13px] text-emerald-900/65 font-medium leading-relaxed max-w-2xl mb-4 sm:mb-5">
+                  {isId
+                    ? "Bukan sekadar peta biasa, melainkan ekosistem terpadu yang memadukan citra satelit resolusi tinggi, data lapangan terverifikasi, linimasa bukti foto, dan indikator dampak sosial-ekologis."
+                    : "Not just a static map, but an integrated ecosystem combining high-resolution satellite layers, verified field inputs, digital photo evidence, and socio-ecological impact indicators."}
+                </p>
+              </Reveal>
 
-            <Reveal slide="up" delay={600} className="mt-12 pt-8 border-t border-slate-100">
-              <p className="text-[12px] font-bold text-emerald-900/40 uppercase tracking-widest max-w-md">
-                {isId
-                  ? "Platform terpisah. Akses per proyek, diberikan tim SATUBUMI."
-                  : "A separate platform. Access per project, granted by SATUBUMI."}
-              </p>
-            </Reveal>
+              {/* 5 PERTANYAAN KUNCI DARI PDF */}
+              <Reveal slide="up" delay={180} className="mb-4 sm:mb-5">
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 sm:p-3.5">
+                  <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-emerald-800/80 mb-2 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-emerald-600" />
+                    {isId ? "5 Pertanyaan Utama yang Dijawab Sistem:" : "5 Core Questions Answered by the Platform:"}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {fiveQuestions.map((q) => (
+                      <div key={q.word} className="bg-white rounded-lg p-2 border border-slate-200/60 shadow-xs">
+                        <p className="text-[11px] font-black text-emerald-950 uppercase tracking-wider mb-0.5">
+                          {q.word}
+                        </p>
+                        <p className="text-[10px] text-emerald-900/70 font-medium leading-tight line-clamp-2">
+                          {q.desc}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+
+              {/* MODUL FITUR UTAMA DARI PDF */}
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2.5 xl:gap-x-6 xl:gap-y-3.5 max-w-3xl mb-4 sm:mb-5">
+                {monitorModules.map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <Reveal key={item.title} slide="up" delay={220 + (i * 60)} className="flex gap-2.5 sm:gap-3 items-start group">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-xs">
+                        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[12px] sm:text-[13px] font-extrabold text-emerald-950 leading-tight mb-0.5">
+                          {item.title}
+                        </p>
+                        <p className="text-[11px] sm:text-[11.5px] text-emerald-900/65 font-medium leading-snug">
+                          {item.body}
+                        </p>
+                      </div>
+                    </Reveal>
+                  );
+                })}
+              </div>
+
+              {/* ACTION FOOTER */}
+              <Reveal slide="up" delay={550} className="pt-3 sm:pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-[11px] sm:text-[12px] font-semibold text-emerald-900/50 max-w-sm leading-relaxed">
+                  {isId
+                    ? "Platform terpisah. Hak akses per proyek diberikan secara resmi oleh tim SATUBUMI."
+                    : "A dedicated platform. Project-level access provisioned by the SATUBUMI team."}
+                </p>
+                <Link
+                  href={`/${lang}/contact`}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-[12px] sm:text-[13px] rounded-xl transition-all shadow-md shadow-emerald-900/15 shrink-0"
+                >
+                  {isId ? "Konsultasikan Akses Platform" : "Request Platform Access"}
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </Reveal>
+
+            </div>
           </div>
 
-          {/* GAMBAR KANAN (Full Height Cover) */}
-          <Reveal slide="none" delay={400} className="relative min-h-[500px] lg:min-h-screen w-full bg-emerald-950">
-            <Image
-              src="/monitor-devicesa.png"
-              alt="Satubumi Monitor Platform"
-              fill
-              className="object-cover object-center scale-[1.02] hover:scale-[1.05] transition-transform duration-1000 ease-out"
-              sizes="(min-width: 1024px) 50vw, 100vw"
-              quality={90}
-            />
-            {/* Overlay Halus untuk Blend ke warna background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/20 to-transparent pointer-events-none" />
-          </Reveal>
+          {/* GAMBAR KANAN: Penentu Tunggal Tinggi Seluruh Section (Master Driver) */}
+          <div className="w-full lg:w-1/2 lg:ml-auto relative bg-[#061e16] overflow-hidden block">
+            <Reveal
+              slide="none"
+              delay={150}
+              className="relative w-full block"
+            >
+              <Image
+                src="/monitor.png"
+                alt="Satubumi Monitor Platform"
+                width={3243}
+                height={4053}
+                className="w-full h-auto block"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                quality={100}
+                priority
+              />
+            </Reveal>
+          </div>
           
         </div>
       </section>

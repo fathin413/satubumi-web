@@ -277,34 +277,6 @@ export default function ProductsPage() {
 
       const calculatedData = await response.json();
       setResults(calculatedData);
-
-      try {
-        const token = localStorage.getItem("access_token");
-        if (token) {
-          const payload = {
-            rapid_fs_result: calculatedData,
-            submitter_name: user?.full_name || undefined,
-            submitter_email: user?.email || undefined,
-            submitter_phone: user?.phone_number || user?.phone || undefined,
-            is_draft: true,
-          };
-          const autoSaveRes = await fetch(`${API_URL}/assessments`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-          });
-          if (autoSaveRes.ok) {
-            const savedData = await autoSaveRes.json();
-            setSavedId(savedData.id || savedData._id || null);
-          }
-        }
-      } catch (autoErr) {
-        console.error("Auto-save background process failed", autoErr);
-      }
-
     } catch (err: any) {
       if (err?.name === "AbortError") {
         setError(isId ? "Analisis dibatalkan oleh pengguna." : "Analysis cancelled by user.");
@@ -319,6 +291,10 @@ export default function ProductsPage() {
 
   const handleSave = async () => {
     if (!results) return;
+    if (savedId && isOfficiallySaved) {
+      setShowSaveSuccess(true);
+      return;
+    }
     setIsSaving(true);
     setError(null);
     setSuccessMsg(null);
@@ -337,41 +313,16 @@ export default function ProductsPage() {
         submitter_name: user?.full_name || undefined,
         submitter_email: user?.email || undefined,
         submitter_phone: user?.phone_number || user?.phone || undefined,
-        is_draft: false,
       };
 
-      let response;
-
-      if (savedId) {
-        response = await fetch(`${API_URL}/assessments/${savedId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ is_draft: false }),
-        });
-
-        if (!response.ok) {
-          response = await fetch(`${API_URL}/assessments`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-          });
-        }
-      } else {
-        response = await fetch(`${API_URL}/assessments`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      }
+      const response = await fetch(`${API_URL}/assessments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -616,6 +567,14 @@ export default function ProductsPage() {
           <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full overflow-hidden flex flex-col relative animate-in zoom-in-[0.5] fade-in duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
             
             <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 pt-10 pb-8 px-8 text-center relative overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSaveSuccess(false)}
+                className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                aria-label={isId ? "Tutup" : "Close"}
+              >
+                <X className="w-4 h-4" />
+              </button>
               <div className="w-20 h-20 mx-auto bg-white rounded-full flex items-center justify-center shadow-lg relative z-10">
                 <div className="absolute inset-0 rounded-full border-2 border-white animate-ping opacity-50 duration-1000" />
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
@@ -628,8 +587,8 @@ export default function ProductsPage() {
               </h3>
               <p className="text-[13px] font-medium text-emerald-900/60 leading-relaxed mb-6">
                 {isId
-                  ? "Hasil Rapid-FS telah diamankan ke database. Anda dapat meninjaunya kembali kapan saja."
-                  : "The Rapid-FS result has been secured to the database. You can review it anytime."}
+                  ? "Hasil Rapid-FS telah diamankan ke database. Anda dapat langsung mengunduh laporan PDF atau melihatnya di dashboard."
+                  : "The Rapid-FS result has been secured to the database. You can download the PDF report immediately or view it on the dashboard."}
               </p>
 
               <div className="bg-emerald-50/50 border border-emerald-100/80 rounded-2xl p-4 mb-8 text-left">
@@ -652,19 +611,22 @@ export default function ProductsPage() {
               </div>
 
               <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownloadPDF();
+                  }}
+                  className="w-full py-4 bg-emerald-700 text-white font-bold text-[14px] rounded-2xl hover:bg-emerald-600 transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  {isId ? "Unduh Laporan (PDF)" : "Download Report (PDF)"}
+                </button>
                 <Link
                   href={`/${lang}/dashboard`}
-                  className="w-full py-4 bg-emerald-700 text-white font-bold text-[14px] rounded-2xl hover:bg-emerald-600 transition-colors shadow-sm active:scale-95"
+                  className="w-full py-4 bg-white border border-slate-200 text-slate-700 font-bold text-[14px] rounded-2xl hover:bg-slate-50 hover:text-slate-900 transition-colors active:scale-95 flex items-center justify-center gap-2"
                 >
                   {isId ? "Buka Dashboard" : "Open Dashboard"}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setShowSaveSuccess(false)}
-                  className="w-full py-4 bg-white border border-slate-200 text-slate-600 font-bold text-[14px] rounded-2xl hover:bg-slate-50 hover:text-slate-800 transition-colors active:scale-95"
-                >
-                  {isId ? "Tutup Modal" : "Close Modal"}
-                </button>
               </div>
             </div>
 
@@ -1290,17 +1252,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-emerald-50">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-1 px-6 py-4 bg-emerald-800 text-white text-[15px] font-bold rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 hover:bg-emerald-950 transition-all duration-300 shadow-md shadow-emerald-950/20 active:scale-95"
-                  >
-                    <Save className="w-5 h-5" />
-                    {isSaving ? (isId ? "Menyimpan…" : "Saving…") : t.save}
-                  </button>
-                  
-                  {/* TOMBOL PDF TIDAK LAGI DI-DISABLE OLEH isOfficiallySaved */}
+                  {/* KIRI: BUTTON DOWNLOAD */}
                   <button
                     type="button"
                     onClick={handleDownloadPDF}
@@ -1309,6 +1261,17 @@ export default function ProductsPage() {
                   >
                     <Download className="w-5 h-5" />
                     {t.download_pdf}
+                  </button>
+
+                  {/* KANAN: BUTTON SIMPAN */}
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-1 px-6 py-4 bg-emerald-800 text-white text-[15px] font-bold rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed flex justify-center items-center gap-2 hover:bg-emerald-950 transition-all duration-300 shadow-md shadow-emerald-950/20 active:scale-95"
+                  >
+                    <Save className="w-5 h-5" />
+                    {isSaving ? (isId ? "Menyimpan…" : "Saving…") : t.save}
                   </button>
                 </div>
               </div>
