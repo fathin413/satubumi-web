@@ -293,12 +293,49 @@ export default function InsightDetailPage() {
         
         const data = await res.json();
         const list: Article[] = Array.isArray(data) ? data : [];
-        const found = list.find((a) => a.slug === slug && a.status === "published") || null;
+
+        const cleanSlug = decodeURIComponent(slug || "").trim().toLowerCase();
+        const slugifyText = (text?: string | null) =>
+          (text || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .trim()
+            .replace(/\s+/g, "-");
+
+        let found =
+          list.find(
+            (a) =>
+              a.status === "published" &&
+              (a.slug?.toLowerCase() === cleanSlug ||
+                String(a.id) === cleanSlug ||
+                slugifyText(a.title) === cleanSlug ||
+                ((a as any).title_en &&
+                  slugifyText((a as any).title_en) === cleanSlug) ||
+                (cleanSlug.length >= 10 &&
+                  (a.slug?.toLowerCase().startsWith(cleanSlug) ||
+                    cleanSlug.startsWith(a.slug?.toLowerCase()))))
+          ) || null;
+
+        // Fallback: jika parameter berupa ID numerik
+        if (!found && !isNaN(Number(cleanSlug)) && Number(cleanSlug) > 0) {
+          try {
+            const singleRes = await fetch(`${API_URL}/articles/${cleanSlug}`);
+            if (singleRes.ok) {
+              const singleData = await singleRes.json();
+              if (singleData && singleData.status === "published") {
+                found = singleData;
+              }
+            }
+          } catch {
+            // Abaikan
+          }
+        }
+
         setArticle(found);
 
         if (found) {
           const publishedList = list.filter((a) => a.status === "published");
-          const others = publishedList.filter((a) => a.slug !== slug);
+          const others = publishedList.filter((a) => a.id !== found?.id && a.slug !== found?.slug);
           
           const sameTopic = others.filter((a) => a.topic === found.topic);
           const diffTopic = others.filter((a) => a.topic !== found.topic);

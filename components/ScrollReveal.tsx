@@ -21,21 +21,29 @@ export default function ScrollReveal({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Fallback: always make visible after 1.2s even if IntersectionObserver doesn't fire
+    // (e.g., when element is already in viewport after async data load)
+    const fallback = setTimeout(() => setIsVisible(true), 1200);
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
+          clearTimeout(fallback);
           if (ref.current) observer.unobserve(ref.current);
         }
       },
       {
-        threshold: 0.12,
-        rootMargin: "0px 0px -40px 0px",
+        threshold: 0.05,
+        rootMargin: "0px 0px 0px 0px",
       }
     );
 
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(fallback);
+      observer.disconnect();
+    };
   }, []);
 
   return (
