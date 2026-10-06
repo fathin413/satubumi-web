@@ -4,9 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User as UserIcon, Globe } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+function resolveImageUrl(url?: string | null) {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const baseUrl = API_URL.replace(/\/api\/v1\/?$/, "");
+  return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -79,6 +86,14 @@ export default function Navbar() {
       }
     };
     checkAuth();
+
+    const handleProfileUpdated = () => {
+      checkAuth();
+    };
+    window.addEventListener("profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("profile-updated", handleProfileUpdated);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -192,13 +207,42 @@ export default function Navbar() {
           </div>
         </nav>
 
-        <button
-          type="button"
-          className="lg:hidden p-1.5 text-emerald-900 transition-colors hover:bg-emerald-50 rounded-full"
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        {/* Mobile controls: Quick Language Switcher & Hamburger Menu */}
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:hidden">
+          <div className="flex items-center bg-white p-0.5 rounded-full border border-emerald-100/90 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => handleLanguageSwitch("en")}
+              className={`px-2.5 py-1 text-[10px] font-extrabold rounded-full transition-all ${
+                currentLang === "en"
+                  ? "bg-emerald-700 text-white shadow-xs"
+                  : "text-emerald-800 hover:bg-emerald-50"
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLanguageSwitch("id")}
+              className={`px-2.5 py-1 text-[10px] font-extrabold rounded-full transition-all ${
+                currentLang === "id"
+                  ? "bg-emerald-700 text-white shadow-xs"
+                  : "text-emerald-800 hover:bg-emerald-50"
+              }`}
+            >
+              ID
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="p-1.5 text-emerald-900 transition-colors hover:bg-emerald-50 rounded-full"
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle navigation menu"
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </header>
 
       <div className="hidden lg:flex bg-white/95 backdrop-blur-md border border-emerald-100/80 rounded-full h-[60px] items-center px-1.5 shadow-[0_10px_40px_-10px_rgba(4,43,34,0.15)] pointer-events-auto relative">
@@ -220,8 +264,16 @@ export default function Navbar() {
                 </span>
               </div>
 
-              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-xs group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm">
-                {getInitials(user?.full_name)}
+              <div className="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 flex items-center justify-center font-extrabold text-xs group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-sm overflow-hidden">
+                {user?.profile_image ? (
+                  <img
+                    src={resolveImageUrl(user.profile_image) || ""}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  getInitials(user?.full_name)
+                )}
               </div>
             </button>
 
@@ -250,6 +302,15 @@ export default function Navbar() {
                     />
                   </svg>
                   {currentLang === "id" ? "Daftar Assessment" : "My Assessments"}
+                </Link>
+
+                <Link
+                  href={`/${currentLang}/profile`}
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-[14px] font-bold text-emerald-900 hover:bg-emerald-50 rounded-xl transition-colors"
+                >
+                  <UserIcon className="w-4 h-4 text-emerald-600" />
+                  {currentLang === "id" ? "Pengaturan Profil" : "Profile Settings"}
                 </Link>
 
                 {isAdmin && (
@@ -321,14 +382,62 @@ export default function Navbar() {
             ))}
           </div>
 
-          <div className="h-px w-full bg-emerald-50 my-2" />
+          <div className="h-px w-full bg-emerald-50 my-1" />
+
+          {/* Dedicated Language Selector inside mobile menu drawer */}
+          <div className="flex items-center justify-between px-4 py-3 bg-emerald-50/70 rounded-2xl border border-emerald-100/90">
+            <div className="flex items-center gap-2.5 text-emerald-900 font-bold text-sm">
+              <Globe className="w-4 h-4 text-emerald-700" />
+              <span>{currentLang === "id" ? "Pilih Bahasa" : "Select Language"}</span>
+            </div>
+            <div className="flex items-center bg-white p-1 rounded-full border border-emerald-200/80 shadow-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  handleLanguageSwitch("en");
+                  setOpen(false);
+                }}
+                className={`px-3 py-1 text-xs font-extrabold rounded-full transition-all ${
+                  currentLang === "en"
+                    ? "bg-emerald-700 text-white shadow-xs"
+                    : "text-emerald-800 hover:bg-emerald-50"
+                }`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleLanguageSwitch("id");
+                  setOpen(false);
+                }}
+                className={`px-3 py-1 text-xs font-extrabold rounded-full transition-all ${
+                  currentLang === "id"
+                    ? "bg-emerald-700 text-white shadow-xs"
+                    : "text-emerald-800 hover:bg-emerald-50"
+                }`}
+              >
+                ID
+              </button>
+            </div>
+          </div>
+
+          <div className="h-px w-full bg-emerald-50 my-1" />
 
           <div className="flex flex-col gap-3">
             {isLoggedIn ? (
               <>
                 <div className="flex items-center gap-4 px-4 py-3 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center font-extrabold text-lg shadow-sm">
-                    {getInitials(user?.full_name)}
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center font-extrabold text-lg shadow-sm overflow-hidden">
+                    {user?.profile_image ? (
+                      <img
+                        src={resolveImageUrl(user.profile_image) || ""}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getInitials(user?.full_name)
+                    )}
                   </div>
                   <div>
                     <p className="text-[11px] text-emerald-800/60 font-bold uppercase tracking-wider mb-0.5">
@@ -343,6 +452,14 @@ export default function Navbar() {
                   className="text-center text-white font-extrabold px-4 py-4 bg-emerald-600 rounded-2xl hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all"
                 >
                   {currentLang === "id" ? "Daftar Assessment" : "My Assessments"}
+                </Link>
+                <Link
+                  href={`/${currentLang}/profile`}
+                  onClick={() => setOpen(false)}
+                  className="text-center text-emerald-900 font-extrabold px-4 py-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-colors shadow-xs flex items-center justify-center gap-2"
+                >
+                  <UserIcon className="w-4 h-4 text-emerald-600" />
+                  <span>{currentLang === "id" ? "Pengaturan Profil" : "Profile Settings"}</span>
                 </Link>
                 {isAdmin && (
                   <Link

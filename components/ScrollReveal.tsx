@@ -21,9 +21,9 @@ export default function ScrollReveal({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Fallback: always make visible after 1.2s even if IntersectionObserver doesn't fire
+    // Fallback: always make visible after 400ms even if IntersectionObserver doesn't fire
     // (e.g., when element is already in viewport after async data load)
-    const fallback = setTimeout(() => setIsVisible(true), 1200);
+    const fallback = setTimeout(() => setIsVisible(true), 400);
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -34,8 +34,8 @@ export default function ScrollReveal({
         }
       },
       {
-        threshold: 0.05,
-        rootMargin: "0px 0px 0px 0px",
+        threshold: 0,
+        rootMargin: "0px 0px 120px 0px",
       }
     );
 

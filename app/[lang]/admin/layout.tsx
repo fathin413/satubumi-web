@@ -21,6 +21,8 @@ import {
   FileText,
   Activity,
   UserCheck,
+  UserCog,
+  ShieldCheck,
 } from "lucide-react";
 
 const API_URL =
@@ -88,6 +90,14 @@ export default function AdminLayout({
       }
     };
     check();
+
+    const handleProfileUpdated = () => {
+      check();
+    };
+    window.addEventListener("profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("profile-updated", handleProfileUpdated);
+    };
   }, [lang, router]);
 
   const handleLogout = () => {
@@ -122,6 +132,12 @@ export default function AdminLayout({
     href: `/${lang}/admin/my-activity`,
     label: isId ? "Aktivitas Saya" : "My Activity",
     icon: UserCheck,
+  });
+
+  userMenuItems.push({
+    href: `/${lang}/admin/profile`,
+    label: isId ? "Pengaturan Profil" : "Profile Settings",
+    icon: UserCog,
   });
 
   const navGroups: NavGroup[] = [
@@ -183,6 +199,11 @@ export default function AdminLayout({
           href: `/${lang}/admin/assessments`,
           label: isId ? "Semua Assessment" : "All Assessments",
           icon: ClipboardList,
+        },
+        {
+          href: `/${lang}/admin/rapid-requests`,
+          label: isId ? "Akses Rapid-FS" : "Rapid-FS Access",
+          icon: ShieldCheck,
         },
       ],
     },
@@ -424,8 +445,12 @@ export default function AdminLayout({
             </div>
 
             {user && (
-              <div className="flex items-center gap-3 min-w-0 max-w-[70%] sm:max-w-[280px] p-1.5 pr-3 rounded-2xl">
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-sm shrink-0">
+              <Link
+                href={`/${lang}/admin/profile`}
+                title={isId ? "Buka Pengaturan Profil Saya" : "Open My Profile Settings"}
+                className="flex items-center gap-3 min-w-0 max-w-[70%] sm:max-w-[280px] p-1.5 pr-3 rounded-2xl hover:bg-slate-100 transition-colors group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-sm shrink-0 group-hover:border-emerald-300 transition-colors">
                   {profileSrc ? (
                     <img
                       src={profileSrc}
@@ -437,19 +462,19 @@ export default function AdminLayout({
                   )}
                 </div>
                 <div className="text-left min-w-0">
-                  <p className="text-[14px] font-extrabold text-slate-800 leading-none truncate">
+                  <p className="text-[14px] font-extrabold text-slate-800 leading-none truncate group-hover:text-emerald-700 transition-colors">
                     {user.full_name}
                   </p>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5 truncate">
                     {String(user.role || "").replace("_", " ")}
                   </p>
                 </div>
-              </div>
+              </Link>
             )}
           </div>
         </header>
 
-        <div className="flex-1 w-full max-w-[1400px] mx-auto p-6 md:p-10 min-w-0">
+        <div className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 xl:p-10 min-w-0">
           <div
             key={pathname}
             className="animate-in fade-in duration-300 h-full min-w-0"

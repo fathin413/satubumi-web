@@ -18,7 +18,7 @@ import {
   LineChart,
   Globe2,
   Users,
-  Sparkles,
+  Activity,
   Target,
   CheckCircle2,
 } from "lucide-react";
@@ -257,30 +257,30 @@ export default function ProductsPage() {
                   {rapidVariables.map((item, index) => {
                     const Icon = item.icon;
                     const positions = [
-                      "top-[0%] left-[-10%] md:top-[2%] md:left-[-5%]",
-                      "top-[20%] right-[-15%] md:top-[20%] md:right-[-12%]",
-                      "bottom-[20%] left-[-15%] md:bottom-[20%] md:left-[-12%]",
-                      "bottom-[0%] right-[-10%] md:bottom-[2%] md:right-[-5%]",
+                      "top-[2%] left-[0%] md:top-[2%] md:left-[0%]",
+                      "top-[12%] right-[0%] md:top-[12%] md:right-[0%]",
+                      "bottom-[12%] left-[0%] md:bottom-[12%] md:left-[0%]",
+                      "bottom-[2%] right-[0%] md:bottom-[2%] md:right-[0%]",
                     ];
 
                     return (
                       <div key={index} className={`absolute ${positions[index]}`}>
                         <div className="animate-product-orbit-reverse">
-                          <div className="bg-white/95 backdrop-blur-md shadow-lg border border-slate-100 rounded-2xl p-3 md:p-4 flex items-center gap-3 hover:-translate-y-1 hover:shadow-emerald-500/20 transition-all duration-300 group cursor-pointer">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                              <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                          <div className="bg-white/95 backdrop-blur-md shadow-md hover:shadow-xl border border-slate-100 rounded-2xl p-3 sm:p-3.5 flex items-center gap-2.5 sm:gap-3 hover:-translate-y-1 hover:scale-105 transition-all duration-300 group cursor-pointer relative z-20 hover:z-30">
+                            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100/50">
+                              <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
                             </div>
-                            <div className="w-[100px] md:w-[120px]">
-                              <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 truncate" title={item.title}>
+                            <div className="min-w-[120px] sm:min-w-[135px] md:min-w-[150px]">
+                              <p className="text-[9px] sm:text-[9.5px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 whitespace-nowrap">
                                 {item.title}
                               </p>
-                              <div className="relative h-7 md:h-9">
-                                <div className="absolute inset-0 flex flex-col justify-start transition-opacity duration-300 group-hover:opacity-0 pt-0.5">
-                                   <span className="text-[13px] md:text-[14px] font-bold text-slate-300 tracking-wide">[ Data ]</span>
+                              <div className="relative min-h-[38px] sm:min-h-[40px] md:min-h-[42px] flex flex-col justify-center">
+                                <div className="flex items-center transition-all duration-300 group-hover:opacity-0 group-hover:invisible">
+                                   <span className="text-[13px] sm:text-[14px] font-bold text-slate-300 tracking-wide">[ Data ]</span>
                                 </div>
-                                <div className="absolute inset-0 flex flex-col justify-start transition-opacity duration-300 opacity-0 group-hover:opacity-100">
-                                   <span className="text-[12px] md:text-[15px] font-extrabold text-emerald-700 leading-tight truncate">{item.value}</span>
-                                   <span className="text-[8px] md:text-[9px] font-bold text-emerald-600/60 uppercase tracking-widest mt-0.5">
+                                <div className="absolute inset-0 flex flex-col justify-center transition-all duration-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none">
+                                   <span className="text-[13px] sm:text-[14px] md:text-[15px] font-extrabold text-emerald-700 leading-snug whitespace-nowrap">{item.value}</span>
+                                   <span className="text-[8px] sm:text-[8.5px] md:text-[9px] font-bold text-emerald-600/70 uppercase tracking-widest leading-none mt-0.5 whitespace-nowrap">
                                      {isId ? "Contoh" : "Example"}
                                    </span>
                                 </div>
@@ -310,7 +310,7 @@ export default function ProductsPage() {
               {/* Header Tag & Title */}
               <Reveal slide="up" delay={0}>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.2em] mb-2.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
                   {isId ? "Produk 02 • Digital Monitoring Platform" : "Product 02 • Digital Monitoring Platform"}
                 </div>
                 <h2 className="text-3xl sm:text-4xl xl:text-5xl font-extrabold tracking-tight text-emerald-950 leading-tight mb-2 sm:mb-3">

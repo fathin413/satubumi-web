@@ -51,6 +51,7 @@ export default function Footer() {
                 width={160}
                 height={40}
                 className="h-10 w-auto object-contain"
+                style={{ height: "40px", width: "auto" }}
                 unoptimized
               />
             </div>
@@ -162,7 +163,7 @@ export default function Footer() {
                 </div>
                 <div>
                   <span className="block text-white mb-1 font-medium">Office</span>
-                  Bogor
+                  Menteng, Bogor Barat, Kota Bogor
                 </div>
               </div>
             </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Eye, Clock, ArrowUpRight, Tag, User as UserIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, Clock, ArrowUpRight, Tag, User as UserIcon, X, Maximize2 } from "lucide-react";
 import ScrollReveal from "../../../../../components/ScrollReveal";
 import { parseBlocks } from "@/components/admin/ContentBlocksEditor";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -215,6 +215,16 @@ export default function InsightDetailPage() {
   const [popularArticles, setPopularArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const viewedRef = useRef(false);
+
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; caption: string } | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImage(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [maxTitleHeight, setMaxTitleHeight] = useState<number>(240);
   const [titleMarginTop, setTitleMarginTop] = useState<number>(0);
@@ -454,26 +464,22 @@ export default function InsightDetailPage() {
                   maxHeight: maxTitleHeight > 0 ? `${maxTitleHeight}px` : undefined,
                 }}
               >
-                <ScrollReveal className="flex flex-col min-h-0">
-                  <AutoFitTitle title={article.title} maxHeight={maxTitleHeight} />
-                </ScrollReveal>
+                <AutoFitTitle title={article.title} maxHeight={maxTitleHeight} />
               </div>
             </div>
 
             <div
               ref={coverRef}
-              className="w-full translate-y-[20%] lg:-mr-6 xl:-mr-10 shrink-0 flex justify-end items-start relative z-20"
+              className="w-full translate-y-0 lg:translate-y-[20%] lg:-mr-6 xl:-mr-10 shrink-0 flex justify-end items-start relative z-20 mt-6 lg:mt-0"
             >
-              <ScrollReveal delay="delay-100" className="w-full flex justify-end items-start">
-                <div className="w-full max-w-[750px] xl:max-w-[840px] aspect-[16/9] h-auto self-start rounded-[2rem] overflow-hidden shadow-2xl border border-white/15 relative bg-emerald-900/30">
-                  <img
-                    src={img}
-                    alt={article.title}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/40 to-transparent" />
-                </div>
-              </ScrollReveal>
+              <div className="w-full max-w-[750px] xl:max-w-[840px] aspect-[16/9] h-auto self-start rounded-[2rem] overflow-hidden shadow-2xl border border-white/15 relative bg-emerald-900/30">
+                <img
+                  src={img}
+                  alt={article.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/40 to-transparent" />
+              </div>
             </div>
 
           </div>
@@ -481,181 +487,196 @@ export default function InsightDetailPage() {
       </section>
 
       {/* ================= BODY CONTENT & SIDEBAR ================= */}
-      <section className="max-w-[1440px] mx-auto px-8 md:px-12 lg:px-16 xl:px-20 pt-16 md:pt-20 lg:pt-28 xl:pt-32 pb-16 lg:pb-24 relative z-0">
+      <section className="max-w-[1440px] mx-auto px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 pt-8 sm:pt-10 md:pt-14 lg:pt-28 xl:pt-32 pb-16 lg:pb-24 relative z-0">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           
           <div className="lg:col-span-8">
-            <ScrollReveal>
-              <div className="w-full space-y-10">
-                {parseBlocks(article.content).map((block, idx) => {
-                  if (block.type === "image" && block.url) {
-                    const caption = block.captionId || block.captionEn || "";
-                    return (
-                      <figure key={idx} className="my-8">
-                        <div className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/70 bg-slate-50/50 flex justify-center items-center">
-                          <img
-                            src={resolveImageUrl(block.url) || block.url}
-                            alt={caption || article.title}
-                            className="max-w-full h-auto rounded-[1.5rem] block"
-                          />
-                        </div>
-                        {caption ? (
-                          <figcaption className="mt-3 text-center text-[13px] font-extrabold text-slate-700">
-                            {caption}
-                          </figcaption>
-                        ) : null}
-                      </figure>
-                    );
-                  }
+            <div className="w-full space-y-10">
+              {parseBlocks(article.content, (article as any).content_en).map((block, idx) => {
+                if (block.type === "image" && block.url) {
+                  const rawCaption =
+                    (isId
+                      ? block.captionId || (block as any).caption_id || block.caption || block.captionEn || (block as any).caption_en
+                      : block.captionEn || (block as any).caption_en || block.caption || block.captionId || (block as any).caption_id) ||
+                    "";
+                  const caption = typeof rawCaption === "string" ? rawCaption.trim() : "";
+                  const imageUrl = resolveImageUrl(block.url) || block.url;
 
-                  if (block.type === "text") {
-                    const html = block.htmlId || block.htmlEn || "";
-                    if (!html) return null;
-
-                    if (isHtml(html)) {
-                      return (
-                        <div
-                          key={idx}
-                          className="max-w-none text-slate-800 font-medium leading-[1.85] text-[17px] md:text-[18px]
-                                    [&_p]:text-justify [&_p]:mb-6
-                                    [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:text-slate-900 [&_h1]:mb-5 [&_h1]:mt-10
-                                    [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mb-5 [&_h2]:mt-10
-                                    [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mb-4 [&_h3]:mt-8
-                                    [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-6
-                                    [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-6
-                                    [&_li]:mb-2 [&_li]:pl-1 [&_li]:text-left
-                                    [&_strong]:font-bold [&_b]:font-bold
-                                    [&_em]:italic [&_i]:italic
-                                    [&_a]:text-emerald-600 [&_a]:underline hover:[&_a]:text-emerald-700"
-                          dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+                  return (
+                    <figure key={idx} className="my-10">
+                      <div
+                        className="w-full overflow-hidden rounded-[1.5rem] border border-slate-200/80 relative group cursor-zoom-in transition-all duration-300 hover:border-emerald-300/80 hover:shadow-lg"
+                        onClick={() => setLightboxImage({ url: imageUrl, caption })}
+                        title={isId ? "Klik untuk memperbesar gambar" : "Click to enlarge image"}
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={caption || article.title}
+                          className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.01]"
                         />
-                      );
-                    }
 
+                        {/* Top-right zoom hint icon */}
+                        <div className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-slate-900/60 backdrop-blur-md text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md">
+                          <Maximize2 className="w-4 h-4" />
+                        </div>
+                      </div>
+
+                      {caption ? (
+                        <figcaption className="mt-3 text-center text-[13.5px] md:text-[14px] font-semibold text-slate-700 leading-relaxed px-2">
+                          {caption}
+                        </figcaption>
+                      ) : null}
+                    </figure>
+                  );
+                }
+
+                if (block.type === "text") {
+                  const html = block.htmlId || block.htmlEn || "";
+                  if (!html) return null;
+
+                  if (isHtml(html)) {
                     return (
                       <div
                         key={idx}
-                        className="text-[17px] md:text-[18px] text-slate-800 font-medium leading-[1.85] text-justify"
-                      >
-                        {html.split("\n").map((paragraph, pIdx) =>
-                          paragraph.trim() ? (
-                            <p key={pIdx} className="mb-6">
-                              {paragraph}
-                            </p>
-                          ) : null,
-                        )}
-                      </div>
+                        className="max-w-none text-slate-800 font-medium leading-[1.85] text-[17px] md:text-[18px]
+                                  [&_p]:text-justify [&_p]:mb-6
+                                  [&_h1]:text-3xl [&_h1]:font-extrabold [&_h1]:text-slate-900 [&_h1]:mb-5 [&_h1]:mt-10
+                                  [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:mb-5 [&_h2]:mt-10
+                                  [&_h3]:text-xl [&_h3]:font-extrabold [&_h3]:text-slate-900 [&_h3]:mb-4 [&_h3]:mt-8
+                                  [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-6
+                                  [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-6
+                                  [&_li]:mb-2 [&_li]:pl-1 [&_li]:text-left
+                                  [&_strong]:font-bold [&_b]:font-bold
+                                  [&_em]:italic [&_i]:italic
+                                  [&_a]:text-emerald-600 [&_a]:underline hover:[&_a]:text-emerald-700
+                                  [&_figure]:my-8 [&_figure]:flex [&_figure]:flex-col [&_figure]:items-center
+                                  [&_figure_img]:w-full [&_figure_img]:h-auto [&_figure_img]:rounded-2xl [&_figure_img]:border [&_figure_img]:border-slate-200/80
+                                  [&_img]:w-full [&_img]:h-auto [&_img]:rounded-2xl [&_img]:border [&_img]:border-slate-200/80
+                                  [&_figcaption]:mt-3 [&_figcaption]:text-center [&_figcaption]:text-[13.5px] [&_figcaption]:md:text-[14px] [&_figcaption]:font-semibold [&_figcaption]:text-slate-700 [&_figcaption]:not-italic [&_figcaption]:leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+                      />
                     );
                   }
 
-                  return null;
-                })}
-              </div>
-            </ScrollReveal>
+                  return (
+                    <div
+                      key={idx}
+                      className="text-[17px] md:text-[18px] text-slate-800 font-medium leading-[1.85] text-justify"
+                    >
+                      {html.split("\n").map((paragraph, pIdx) =>
+                        paragraph.trim() ? (
+                          <p key={pIdx} className="mb-6">
+                            {paragraph}
+                          </p>
+                        ) : null,
+                      )}
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
+            </div>
           </div>
 
           <div className="lg:col-span-4">
             <div className="sticky top-[110px] flex flex-col gap-6 h-fit">
               
-              <ScrollReveal delay="delay-200">
-                <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
-                  <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
-                    {isId ? "Informasi Artikel" : "Article Information"}
-                  </h3>
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
+                <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
+                  {isId ? "Informasi Artikel" : "Article Information"}
+                </h3>
 
-                  <div className="flex flex-col mb-8">
-                    <div className="w-full aspect-square rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm mb-5">
-                      {article.author_profile_image ? (
-                        <img
-                          src={resolveImageUrl(article.author_profile_image) || ""}
-                          alt={article.author || "Author"}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <UserIcon className="w-16 h-16 text-emerald-600/30" />
-                      )}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {article.author || "Satubumi Team"}
-                      </span>
-                      <span className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-2.5">
-                        {isId ? "Penulis" : "Author"}
-                      </span>
-                    </div>
+                <div className="flex flex-col mb-8">
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm mb-5">
+                    {article.author_profile_image ? (
+                      <img
+                        src={resolveImageUrl(article.author_profile_image) || ""}
+                        alt={article.author || "Author"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="w-16 h-16 text-emerald-600/30" />
+                    )}
                   </div>
-
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2.5 text-slate-500">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-[13px] font-bold">{isId ? "Tanggal Publish" : "Published Date"}</span>
-                      </div>
-                      <span className="text-[13.5px] font-bold text-slate-900">
-                        {formatDate(article.created_at, lang)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2.5 text-slate-500">
-                        <Eye className="w-4 h-4" />
-                        <span className="text-[13px] font-bold">{isId ? "Tayangan" : "Views"}</span>
-                      </div>
-                      <span className="text-[13.5px] font-bold text-slate-900">
-                        {article.view_count?.toLocaleString(isId ? "id-ID" : "en-US") || 0}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-2.5 text-slate-500">
-                        <Tag className="w-4 h-4" />
-                        <span className="text-[13px] font-bold">{isId ? "Kategori" : "Category"}</span>
-                      </div>
-                      <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
-                        {topicLabel(article.topic, isId)}
-                      </span>
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                      {article.author || "Satubumi Team"}
+                    </span>
+                    <span className="text-[12px] font-bold uppercase tracking-[0.2em] text-emerald-600 mb-2.5">
+                      {isId ? "Penulis" : "Author"}
+                    </span>
                   </div>
                 </div>
-              </ScrollReveal>
+
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5 text-slate-500">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-[13px] font-bold">{isId ? "Tanggal Publish" : "Published Date"}</span>
+                    </div>
+                    <span className="text-[13.5px] font-bold text-slate-900">
+                      {formatDate(article.created_at, lang)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2.5 text-slate-500">
+                      <Eye className="w-4 h-4" />
+                      <span className="text-[13px] font-bold">{isId ? "Tayangan" : "Views"}</span>
+                    </div>
+                    <span className="text-[13.5px] font-bold text-slate-900">
+                      {article.view_count?.toLocaleString(isId ? "id-ID" : "en-US") || 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2.5 text-slate-500">
+                      <Tag className="w-4 h-4" />
+                      <span className="text-[13px] font-bold">{isId ? "Kategori" : "Category"}</span>
+                    </div>
+                    <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
+                      {topicLabel(article.topic, isId)}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               {popularArticles.length > 0 && (
-                <ScrollReveal delay="delay-300">
-                  <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
-                    <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-                      <h3 className="text-lg font-extrabold text-slate-900">
-                        {isId ? "Artikel Populer" : "Popular Insights"}
-                      </h3>
-                    </div>
-                    
-                    <div className="flex flex-col gap-5">
-                      {popularArticles.map((art) => (
-                        <Link
-                          key={art.id}
-                          href={`/${lang}/insights/${art.slug}`}
-                          className="group flex items-center gap-4 hover:-translate-y-0.5 transition-transform"
-                        >
-                          <div className="w-[84px] h-[84px] rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/50">
-                            <img
-                              src={resolveImageUrl(art.image_url) || "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=200&q=80"}
-                              alt={art.title}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
-                          </div>
-                          <div className="flex flex-col justify-center">
-                            <h4 className="text-[13px] font-extrabold text-slate-900 leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">
-                              {art.title}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
-                              <Clock className="w-3.5 h-3.5" />
-                              {formatDate(art.created_at, lang)}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
+                <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
+                  <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+                    <h3 className="text-lg font-extrabold text-slate-900">
+                      {isId ? "Artikel Populer" : "Popular Insights"}
+                    </h3>
                   </div>
-                </ScrollReveal>
+                  
+                  <div className="flex flex-col gap-5">
+                    {popularArticles.map((art) => (
+                      <Link
+                        key={art.id}
+                        href={`/${lang}/insights/${art.slug}`}
+                        className="group flex items-center gap-4 hover:-translate-y-0.5 transition-transform"
+                      >
+                        <div className="w-[84px] h-[84px] rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/50">
+                          <img
+                            src={resolveImageUrl(art.image_url) || "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=200&q=80"}
+                            alt={art.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        </div>
+                        <div className="flex flex-col justify-center">
+                          <h4 className="text-[13px] font-extrabold text-slate-900 leading-snug line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                            {art.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatDate(art.created_at, lang)}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -688,6 +709,39 @@ export default function InsightDetailPage() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* ================= IMAGE LIGHTBOX MODAL ================= */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-5 right-5 sm:top-6 sm:right-6 p-2.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer z-10"
+            aria-label="Close image preview"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          <div
+            className="relative max-w-5xl max-h-[85vh] flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.caption || "Preview"}
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+            />
+            {lightboxImage.caption && (
+              <div className="mt-4 px-5 py-3 rounded-2xl bg-slate-900/90 border border-white/20 text-white text-xs sm:text-sm font-medium text-center max-w-2xl leading-relaxed shadow-xl backdrop-blur-md">
+                {lightboxImage.caption}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
     </main>

@@ -1479,9 +1479,9 @@ export default function AdminAboutPage() {
             {teamMembers.map((member) => (
               <div
                 key={member.id}
-                className="border border-slate-200/80 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between hover:border-emerald-200 transition-all"
+                className="border border-slate-200/80 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between hover:border-emerald-200 transition-all min-w-0 overflow-hidden"
               >
-                <div>
+                <div className="min-w-0 w-full">
                   <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 bg-slate-100 border border-slate-100">
                     {member.image_url ? (
                       <img
@@ -1499,14 +1499,14 @@ export default function AdminAboutPage() {
                     )}
                   </div>
 
-                  <h3 className="font-extrabold text-slate-900 text-base leading-snug">
+                  <h3 className="font-extrabold text-slate-900 text-base leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word]">
                     {member.name}
                   </h3>
-                  <p className="text-xs text-emerald-600 font-bold mt-1">
+                  <p className="text-xs text-emerald-600 font-bold mt-1 break-words [overflow-wrap:anywhere] [word-break:break-word]">
                     {isId ? member.role : (member.role_en || member.role)}
                   </p>
                   {member.description && (
-                    <p className="text-xs text-slate-500 mt-2.5 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-2.5 line-clamp-3 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] [word-break:break-word]">
                       {isId ? member.description : (member.description_en || member.description)}
                     </p>
                   )}

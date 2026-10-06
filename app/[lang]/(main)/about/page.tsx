@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { User } from "lucide-react";
 import ScrollReveal from "../../../../components/ScrollReveal";
 
 const API_URL =
@@ -375,37 +376,50 @@ export default function AboutPage() {
               {isId ? "Belum ada data tim." : "No team members yet."}
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
               {teamMembers.map((member, index) => (
-                <ScrollReveal key={member.id} delay={`delay-${index * 100}`}>
-                  <article className="group flex flex-col">
-                    <div className="relative w-full aspect-square overflow-hidden rounded-[2rem] bg-slate-200 mb-6 shadow-md">
-                      <img
-                        src={resolveImage(member.image_url)}
-                        alt={member.name}
-                        className="w-full h-full object-cover filter grayscale-[35%] group-hover:grayscale-0 transition-transform duration-[1.5s] ease-out group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <ScrollReveal key={member.id} delay={`delay-${index * 100}`} className="h-full min-w-0">
+                  <article className="group flex flex-col h-full bg-white rounded-[2.25rem] p-5 md:p-6 border border-slate-200/80 hover:border-emerald-300 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden min-w-0 w-full">
+                    <div className="relative w-full aspect-square overflow-hidden rounded-[1.75rem] bg-slate-100 mb-6 shadow-sm border border-slate-200/60">
+                      {member.image_url && member.image_url.trim() ? (
+                        <>
+                          <img
+                            src={resolveImage(member.image_url)}
+                            alt={member.name}
+                            className="w-full h-full object-cover filter grayscale-[35%] group-hover:grayscale-0 transition-transform duration-[1.5s] ease-out group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200/80 text-slate-400 group-hover:bg-slate-200/60 transition-colors">
+                          <div className="w-16 h-16 rounded-full bg-white/90 shadow-sm flex items-center justify-center mb-2.5 text-slate-400 group-hover:text-emerald-600 group-hover:scale-105 transition-all">
+                            <User className="w-8 h-8" />
+                          </div>
+                          <span className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 group-hover:text-slate-600 transition-colors">
+                            No Photo
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex flex-col px-2">
-                      <h3 className="text-[1.35rem] font-extrabold tracking-tight text-emerald-950 mb-1.5 group-hover:text-emerald-700 transition-colors">
+                    <div className="flex flex-col flex-grow px-1 min-w-0 w-full">
+                      <h3 className="text-[1.35rem] font-extrabold tracking-tight text-emerald-950 mb-1.5 group-hover:text-emerald-700 transition-colors break-words [overflow-wrap:anywhere] [word-break:break-word]">
                         {member.name}
                       </h3>
 
-                    <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-600 mb-4">
-                    {isId ? member.role : member.role_en || member.role}
-                    </p>
+                      <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-600 mb-4 break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                        {isId ? member.role : member.role_en || member.role}
+                      </p>
 
                       <div className="w-8 h-[3px] bg-emerald-200 mb-4 group-hover:w-16 group-hover:bg-emerald-500 transition-all duration-500 rounded-full" />
 
                       {(isId ? member.description : member.description_en || member.description) && (
-  <p className="text-[14px] md:text-[15px] text-slate-600 font-medium leading-relaxed">
-    {isId
-      ? member.description
-      : member.description_en || member.description}
-  </p>
-)}
+                        <p className="text-[14px] md:text-[14.5px] text-slate-600 font-medium leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere] [word-break:break-word]">
+                          {isId
+                            ? member.description
+                            : member.description_en || member.description}
+                        </p>
+                      )}
                     </div>
                   </article>
                 </ScrollReveal>

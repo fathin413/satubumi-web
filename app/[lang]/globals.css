@@ -133,7 +133,22 @@
   animation: productOrbit 60s linear infinite;
 }
 
-
 .animate-product-orbit-reverse {
   animation: productOrbitReverse 60s linear infinite;
+}
+
+/* Fix Leaflet map & tile rendering with TailwindCSS */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  font-family: inherit;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-tile {
+  visibility: inherit !important;
 }

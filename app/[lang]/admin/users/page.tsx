@@ -89,7 +89,8 @@ export default function AdminUsersPage() {
     { value: "client", label: "Client" },
   ];
 
-  const token = () => localStorage.getItem("access_token");
+  const token = () =>
+    localStorage.getItem("access_token") || localStorage.getItem("token") || "";
 
   const getImageUrl = (path?: string | null) => {
     if (!path) return null;
@@ -135,11 +136,19 @@ export default function AdminUsersPage() {
 
   const loadUsers = async () => {
     try {
-      const res = await fetch(`${API_URL}/users/`, {
+      let res = await fetch(`${API_URL}/users/`, {
         headers: {
           Authorization: `Bearer ${token()}`,
         },
       });
+
+      if (!res.ok && res.status === 404) {
+        res = await fetch(`${API_URL}/users`, {
+          headers: {
+            Authorization: `Bearer ${token()}`,
+          },
+        });
+      }
 
       if (res.status === 403) {
         setError(
@@ -162,7 +171,10 @@ export default function AdminUsersPage() {
       }
 
       const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data)
+        ? data
+        : data.users || data.items || data.data || [];
+      setUsers(list);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
     } finally {

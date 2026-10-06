@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 import ScrollReveal from "../ScrollReveal";
 
@@ -20,18 +19,7 @@ export default function AboutSection({
     <section className="relative w-full py-12 lg:py-16 bg-[#fdfdfd] border-t border-slate-100 font-sans overflow-hidden">
       
       {/* ================= BACKGROUND ELEMENTS ================= */}
-      {/* 1. Watermark Logo Transparan di Tengah */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[1400px] flex justify-center pointer-events-none select-none z-0 opacity-5">
-        <Image 
-          src="/logo2.png" 
-          alt="Satubumi Watermark" 
-          width={1400} 
-          height={1400} 
-          className="w-full h-auto object-contain"
-        />
-      </div>
-
-      {/* 2. Soft Emerald Glow di sudut */}
+      {/* Soft Emerald Glow di sudut */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-400/5 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-[-10%] w-[500px] h-[500px] bg-emerald-600/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -44,7 +32,7 @@ export default function AboutSection({
             
             {/* Badge Kategori */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-50 border border-emerald-100 mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">
                 {isId ? "Tentang Kami" : "About Us"}
               </span>

@@ -20,8 +20,11 @@ const SANITIZE_CONFIG = {
     "h1",
     "h2",
     "h3",
+    "figure",
+    "figcaption",
+    "img",
   ],
-  ALLOWED_ATTR: ["href", "target", "rel"],
+  ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "title", "class"],
 };
 
 /**

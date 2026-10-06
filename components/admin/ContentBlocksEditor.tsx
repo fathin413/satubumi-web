@@ -10,6 +10,7 @@ export type ContentBlock =
       id: string;
       type: "image";
       url: string;
+      caption?: string;
       captionId: string;
       captionEn: string;
       file?: File;
@@ -20,18 +21,21 @@ function uid() {
 }
 
 export function parseBlocks(
-  rawId?: string | null,
-  rawEn?: string | null,
+  rawId?: any,
+  rawEn?: any,
 ): ContentBlock[] {
-  const asArr = (raw?: string | null) => {
+  const asArr = (raw?: any) => {
     if (!raw || raw === "-") return [] as any[];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "object") return [raw];
     try {
       const data = JSON.parse(raw);
-      if (Array.isArray(data) && data[0]?.type) return data;
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === "object") return [data];
     } catch {
       /* html lama */
     }
-    return raw ? [{ type: "text", html: raw }] : [];
+    return raw ? [{ type: "text", html: String(raw) }] : [];
   };
 
   const a = asArr(rawId);
@@ -44,20 +48,31 @@ export function parseBlocks(
     const kind = left?.type || right?.type || "text";
 
     if (kind === "image") {
+      const capLeft =
+        (left?.type === "image"
+          ? left.caption ?? left.captionId ?? left.captionEn ?? left.caption_id ?? ""
+          : "") || "";
+      const capRight =
+        (right?.type === "image"
+          ? right.caption ?? right.captionEn ?? right.captionId ?? right.caption_en ?? ""
+          : "") || "";
+      const fallbackCap = capLeft || capRight || "";
+
       return {
         id: uid(),
         type: "image" as const,
-        url: left?.url || right?.url || "",
-        captionId: left?.type === "image" ? left.caption || "" : "",
-        captionEn: right?.type === "image" ? right.caption || "" : "",
+        url: left?.url || right?.url || (typeof left === "string" ? left : "") || "",
+        caption: fallbackCap,
+        captionId: capLeft || fallbackCap,
+        captionEn: capRight || fallbackCap,
       };
     }
 
     return {
       id: uid(),
       type: "text" as const,
-      htmlId: left?.type === "text" ? left.html || "" : "",
-      htmlEn: right?.type === "text" ? right.html || "" : "",
+      htmlId: left?.type === "text" ? left.html || left.htmlId || "" : "",
+      htmlEn: right?.type === "text" ? right.html || right.htmlEn || "" : "",
     };
   });
 }
@@ -69,11 +84,21 @@ export function serializeBlocks(blocks: ContentBlock[], lang: "id" | "en") {
         ? {
             type: "image",
             url: bl.url,
-            caption: lang === "id" ? bl.captionId : bl.captionEn,
+            caption:
+              (lang === "id"
+                ? bl.captionId || bl.captionEn || bl.caption
+                : bl.captionEn || bl.captionId || bl.caption) || "",
+            captionId: bl.captionId || bl.caption || "",
+            captionEn: bl.captionEn || bl.caption || "",
           }
         : {
             type: "text",
-            html: lang === "id" ? bl.htmlId : bl.htmlEn,
+            html:
+              (lang === "id"
+                ? bl.htmlId || bl.htmlEn
+                : bl.htmlEn || bl.htmlId) || "",
+            htmlId: bl.htmlId || "",
+            htmlEn: bl.htmlEn || "",
           },
     ),
   );
@@ -284,19 +309,28 @@ export default function ContentBlocksEditor({
               )}
 
               <input
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-800 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                 placeholder={
                   isId ? "Keterangan foto (ID)" : "Photo caption (EN)"
                 }
                 value={isId ? b.captionId || "" : b.captionEn || ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value;
                   update(
                     i,
                     isId
-                      ? { captionId: e.target.value }
-                      : { captionEn: e.target.value },
-                  )
-                }
+                      ? {
+                          captionId: val,
+                          caption: val,
+                          ...(!b.captionEn ? { captionEn: val } : {}),
+                        }
+                      : {
+                          captionEn: val,
+                          caption: val,
+                          ...(!b.captionId ? { captionId: val } : {}),
+                        },
+                  );
+                }}
               />
             </div>
           )}

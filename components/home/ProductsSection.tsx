@@ -110,8 +110,8 @@ export default function ProductsSection({
         <div className="grid lg:grid-cols-12 gap-16 lg:gap-0 items-center relative">
           
           {/* ======================= KIRI: ENGINE ANIMATION ======================= */}
-          <div className="lg:col-span-6 flex justify-center lg:justify-start lg:pr-16 relative">
-            <div className="relative w-full max-w-[300px] md:max-w-[420px] aspect-square flex items-center justify-center m-auto">
+          <div className="lg:col-span-6 flex justify-center lg:justify-start lg:pr-8 xl:pr-16 relative">
+            <div className="relative w-full max-w-[320px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[420px] aspect-square flex items-center justify-center m-auto">
               
               {/* Cincin Statis */}
               <div className="absolute inset-0 border border-slate-200/70 rounded-full" />
@@ -122,7 +122,7 @@ export default function ProductsSection({
               <div className="absolute inset-16 md:inset-20 border border-emerald-200/50 rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: '1.5s' }} />
               
               {/* Core Engine (Logo Center) */}
-              <div className="w-32 h-32 md:w-52 md:h-52 bg-white border-2 border-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-slate-200/50 relative overflow-hidden z-10 p-5 md:p-8">
+              <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-48 md:h-48 bg-white border-2 border-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-slate-200/50 relative overflow-hidden z-10 p-5 md:p-8">
                  <Image 
                    src="/loggo1.png" 
                    alt="Satubumi Center Core" 
@@ -138,37 +138,39 @@ export default function ProductsSection({
                 {product.variables.map((item, index) => {
                   const Icon = item.icon;
                   const positions = [
-                    "top-[5%] left-[-5%] md:top-[5%] md:left-[-5%]",
-                    "top-[20%] right-[-10%] md:top-[20%] md:right-[-10%]",
-                    "bottom-[20%] left-[-10%] md:bottom-[20%] md:left-[-10%]",
-                    "bottom-[5%] right-[-5%] md:bottom-[5%] md:right-[0%]",
+                    "top-[2%] left-[0%] md:top-[2%] md:left-[0%]",
+                    "top-[12%] right-[0%] md:top-[12%] md:right-[0%]",
+                    "bottom-[12%] left-[0%] md:bottom-[12%] md:left-[0%]",
+                    "bottom-[2%] right-[0%] md:bottom-[2%] md:right-[0%]",
                   ];
 
                   return (
                     <div key={index} className={`absolute ${positions[index]}`}>
                       <div className="animate-product-orbit-reverse">
                         
-                        {/* Box Data - Diubah menjadi rounded-2xl (lebih membulat) */}
-                        <div className="bg-white shadow-md rounded-2xl p-3 md:p-4 flex items-center gap-3 hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
+                        {/* Box Data */}
+                        <div className="bg-white/95 backdrop-blur-md shadow-md hover:shadow-xl rounded-2xl p-3 sm:p-3.5 flex items-center gap-2.5 sm:gap-3 transition-all duration-300 group cursor-pointer hover:scale-105 relative z-20 hover:z-30 border border-slate-100">
                           
-                          {/* Icon Box - Diubah menjadi rounded-xl */}
-                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-600 shrink-0">
-                            <Icon className="w-4 h-4 md:w-5 md:h-5" />
+                          {/* Icon Box */}
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-slate-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100/40">
+                            <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
                           </div>
                           
-                          <div className="w-[110px] md:w-[130px]">
-                            <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 truncate" title={item.title}>
+                          <div className="min-w-[120px] sm:min-w-[135px] md:min-w-[150px]">
+                            <p className="text-[9px] sm:text-[9.5px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 whitespace-nowrap">
                               {item.title}
                             </p>
                             
-                            {/* Efek Hover Animasi Transisi Data */}
-                            <div className="relative h-7 md:h-9">
-                              <div className="absolute inset-0 flex flex-col justify-start transition-opacity duration-300 group-hover:opacity-0 pt-0.5">
-                                 <span className="text-[13px] md:text-[14px] font-bold text-slate-300 tracking-wide">[ Data ]</span>
+                            {/* Efek Hover Animasi Transisi Data - ruang vertikal lega tanpa terpotong */}
+                            <div className="relative min-h-[38px] sm:min-h-[40px] md:min-h-[42px] flex flex-col justify-center">
+                              <div className="flex items-center transition-all duration-300 group-hover:opacity-0 group-hover:invisible">
+                                 <span className="text-[13px] sm:text-[14px] font-bold text-slate-300 tracking-wide">[ Data ]</span>
                               </div>
-                              <div className="absolute inset-0 flex flex-col justify-start transition-opacity duration-300 opacity-0 group-hover:opacity-100">
-                                 <span className="text-[13px] md:text-[15px] font-extrabold text-emerald-700 leading-tight truncate">{item.value}</span>
-                                 <span className="text-[8px] md:text-[9px] font-bold text-emerald-600/60 uppercase tracking-widest mt-0.5">
+                              <div className="absolute inset-0 flex flex-col justify-center transition-all duration-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none">
+                                 <span className="text-[13px] sm:text-[14px] md:text-[15px] font-extrabold text-emerald-700 leading-snug whitespace-nowrap">
+                                   {item.value}
+                                 </span>
+                                 <span className="text-[8px] sm:text-[8.5px] md:text-[9px] font-bold text-emerald-600/70 uppercase tracking-widest leading-none mt-0.5 whitespace-nowrap">
                                    {active === "rapid" ? (isId ? "Contoh" : "Example") : (isId ? "Metrik" : "Metric")}
                                  </span>
                               </div>

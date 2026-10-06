@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, ExternalLink, Phone, Mail, User } from "lucide-react";
 import { extractErrorMessage, getErrorMessage } from "@/lib/error";
+import { translateFeasibilityCategory, translateEcosystemType } from "@/lib/spatialTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -29,6 +30,7 @@ function normalizeList(data: unknown): Assessment[] {
     if (Array.isArray(obj.items)) return obj.items as Assessment[];
     if (Array.isArray(obj.data)) return obj.data as Assessment[];
     if (Array.isArray(obj.results)) return obj.results as Assessment[];
+    if (Array.isArray(obj.assessments)) return obj.assessments as Assessment[];
   }
   return [];
 }
@@ -45,7 +47,8 @@ export default function AdminAssessmentsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const token = localStorage.getItem("access_token");
+      const token =
+        localStorage.getItem("access_token") || localStorage.getItem("token");
       if (!token) {
         router.push(`/${lang}/login`);
         return;
@@ -66,11 +69,22 @@ export default function AdminAssessmentsPage() {
           return;
         }
 
-        const res = await fetch(`${API_URL}/assessments`, {
+        let res = await fetch(`${API_URL}/assessments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok && res.status === 404) {
+          res = await fetch(`${API_URL}/assessments/`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
         if (!res.ok) {
-          throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat data" : "Failed to load", lang));
+          throw new Error(
+            await extractErrorMessage(
+              res,
+              isId ? "Gagal memuat data" : "Failed to load",
+              lang
+            )
+          );
         }
         const data = await res.json();
         setItems(normalizeList(data));
@@ -136,7 +150,7 @@ export default function AdminAssessmentsPage() {
                   <div className="flex flex-wrap items-center gap-2 mb-1">
                     {item.feasibility_category && (
                       <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        {item.feasibility_category}
+                        {translateFeasibilityCategory(item.feasibility_category, isId)}
                       </span>
                     )}
                     {item.user_id != null && (
@@ -151,7 +165,7 @@ export default function AdminAssessmentsPage() {
                   </h3>
 
                   <p className="text-sm text-emerald-900/40 font-medium mt-0.5">
-                    {item.ecosystem_type?.replace(/_/g, " ")}
+                    {translateEcosystemType(item.ecosystem_type, isId)}
                     {item.area_ha != null &&
                       ` · ${Number(item.area_ha).toLocaleString()} ha`}
                     {item.created_at &&
@@ -215,7 +229,7 @@ export default function AdminAssessmentsPage() {
                 </div>
 
                 <Link
-                  href={`/${lang}/dashboard/${item.id}`}
+                  href={`/${lang}/admin/assessments/${item.id}`}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-100 text-emerald-700 text-sm font-bold hover:bg-emerald-50 transition-colors shrink-0"
                 >
                   <ExternalLink className="w-4 h-4" />
