@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 const ROUTE_TITLES: Record<string, string> = {
-  "": "Home",
   about: "About",
   services: "Services",
   insights: "Insights",
@@ -41,6 +40,15 @@ export default function PageTitleUpdater() {
     const hasLang = segments[0] === "id" || segments[0] === "en";
     const routeSegments = hasLang ? segments.slice(1) : segments;
     const routeKey = routeSegments.join("/");
+
+    // Halaman Beranda (Homepage): Gunakan tagline hero yang menarik, bukan "Home | Satubumi"
+    if (!routeKey) {
+      const isId = segments[0] === "id";
+      document.title = isId
+        ? "Satubumi — Aksi Terukur untuk Masa Depan yang Tangguh"
+        : "Satubumi — Measurable Action for a Resilient Future";
+      return;
+    }
 
     let pageName = ROUTE_TITLES[routeKey];
 

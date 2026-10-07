@@ -12,9 +12,43 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 const FALLBACK_INSIGHT = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop";
 
-export const metadata = {
-  title: "Home",
-};
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  const isId = lang === "id";
+
+  const title = isId
+    ? "Satubumi — Aksi Terukur untuk Masa Depan yang Tangguh"
+    : "Satubumi — Measurable Action for a Resilient Future";
+
+  const description = isId
+    ? "Satubumi menjembatani sains, alam, masyarakat, dan bisnis untuk memberikan kepastian di tengah iklim yang tidak menentu."
+    : "Satubumi bridges science, nature, communities, and business to deliver certainty in an uncertain climate.";
+
+  return {
+    title: {
+      absolute: title,
+    },
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: isId ? "id_ID" : "en_US",
+      siteName: "Satubumi",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 type Article = {
   id: number;
