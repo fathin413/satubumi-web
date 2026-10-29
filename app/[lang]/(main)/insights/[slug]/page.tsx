@@ -13,6 +13,7 @@ const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 
 type Article = {
   id: number;
+  category?: string;
   title: string;
   slug: string;
   content: string;
@@ -33,8 +34,10 @@ const TOPIC_LABELS: Record<string, { id: string; en: string }> = {
   other: { id: "Lainnya", en: "Other" },
 };
 
-function topicLabel(topic: string | null | undefined, isId: boolean) {
-  if (!topic) return isId ? "Artikel" : "Article";
+function topicLabel(topic: string | null | undefined, isId: boolean, isNews = false) {
+  if (!topic) {
+    return isNews ? (isId ? "Berita" : "News") : (isId ? "Artikel" : "Article");
+  }
   const t = TOPIC_LABELS[topic];
   return t ? (isId ? t.id : t.en) : topic;
 }
@@ -83,6 +86,7 @@ function formatDate(iso?: string, lang?: string) {
 }
 
 function RelatedCard({ item, lang, isId }: { item: Article; lang: string; isId: boolean }) {
+  const isNews = item.category === "news";
   const img = resolveImageUrl(item.image_url) || "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80";
   return (
     <Link
@@ -97,7 +101,7 @@ function RelatedCard({ item, lang, isId }: { item: Article; lang: string; isId: 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
         <span className="absolute top-4 left-4 inline-flex items-center px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-sm text-emerald-800 text-[10px] font-extrabold uppercase tracking-widest shadow-sm">
-          {topicLabel(item.topic, isId)}
+          {topicLabel(item.topic, isId, isNews)}
         </span>
       </div>
       <div className="p-6 flex flex-col flex-grow">
@@ -295,15 +299,6 @@ export default function InsightDetailPage() {
       viewedRef.current = false;
       try {
         const apiLang = lang === "en" ? "en" : "id";
-        const res = await fetch(
-          `${API_URL}/articles/?category=insight&lang=${apiLang}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) throw new Error("fail");
-        
-        const data = await res.json();
-        const list: Article[] = Array.isArray(data) ? data : [];
-
         const cleanSlug = decodeURIComponent(slug || "").trim().toLowerCase();
         const slugifyText = (text?: string | null) =>
           (text || "")
@@ -312,24 +307,59 @@ export default function InsightDetailPage() {
             .trim()
             .replace(/\s+/g, "-");
 
-        let found =
-          list.find(
-            (a) =>
-              a.status === "published" &&
-              (a.slug?.toLowerCase() === cleanSlug ||
-                String(a.id) === cleanSlug ||
-                slugifyText(a.title) === cleanSlug ||
-                ((a as any).title_en &&
-                  slugifyText((a as any).title_en) === cleanSlug) ||
-                (cleanSlug.length >= 10 &&
-                  (a.slug?.toLowerCase().startsWith(cleanSlug) ||
-                    cleanSlug.startsWith(a.slug?.toLowerCase()))))
-          ) || null;
+        let found: Article | null = null;
+        let list: Article[] = [];
+
+        // 1. Coba fetch langsung via endpoint slug jika didukung BE
+        try {
+          const bySlugRes = await fetch(
+            `${API_URL}/articles/by-slug/${encodeURIComponent(cleanSlug)}?lang=${apiLang}`,
+            { cache: "no-store" }
+          );
+          if (bySlugRes.ok) {
+            const bySlugData = await bySlugRes.json();
+            if (bySlugData && bySlugData.status === "published") {
+              found = bySlugData;
+            }
+          }
+        } catch {
+          // Abaikan jika endpoint belum tersedia
+        }
+
+        // 2. Fetch seluruh artikel publik (tanpa membatasi category=insight agar news juga bisa dimuat)
+        try {
+          const res = await fetch(
+            `${API_URL}/articles/?lang=${apiLang}`,
+            { cache: "no-store" }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            list = Array.isArray(data) ? data : [];
+          }
+        } catch {
+          // Abaikan
+        }
+
+        if (!found && list.length > 0) {
+          found =
+            list.find(
+              (a) =>
+                a.status === "published" &&
+                (a.slug?.toLowerCase() === cleanSlug ||
+                  String(a.id) === cleanSlug ||
+                  slugifyText(a.title) === cleanSlug ||
+                  ((a as any).title_en &&
+                    slugifyText((a as any).title_en) === cleanSlug) ||
+                  (cleanSlug.length >= 10 &&
+                    (a.slug?.toLowerCase().startsWith(cleanSlug) ||
+                      cleanSlug.startsWith(a.slug?.toLowerCase()))))
+            ) || null;
+        }
 
         // Fallback: jika parameter berupa ID numerik
         if (!found && !isNaN(Number(cleanSlug)) && Number(cleanSlug) > 0) {
           try {
-            const singleRes = await fetch(`${API_URL}/articles/${cleanSlug}`);
+            const singleRes = await fetch(`${API_URL}/articles/${cleanSlug}?lang=${apiLang}`);
             if (singleRes.ok) {
               const singleData = await singleRes.json();
               if (singleData && singleData.status === "published") {
@@ -346,12 +376,16 @@ export default function InsightDetailPage() {
         if (found) {
           const publishedList = list.filter((a) => a.status === "published");
           const others = publishedList.filter((a) => a.id !== found?.id && a.slug !== found?.slug);
+
+          // Utamakan item dari kategori yang sama (news dengan news, insight dengan insight)
+          const sameCategoryOthers = others.filter((a) => (a.category || "insight") === (found?.category || "insight"));
+          const candidateList = sameCategoryOthers.length > 0 ? sameCategoryOthers : others;
           
-          const sameTopic = others.filter((a) => a.topic === found.topic);
-          const diffTopic = others.filter((a) => a.topic !== found.topic);
+          const sameTopic = candidateList.filter((a) => a.topic && a.topic === found?.topic);
+          const diffTopic = candidateList.filter((a) => !found?.topic || a.topic !== found?.topic);
           setRelatedArticles([...sameTopic, ...diffTopic].slice(0, 3));
 
-          const popular = [...others]
+          const popular = [...candidateList]
             .sort((a, b) => (b.view_count || 0) - (a.view_count || 0))
             .slice(0, 3);
           setPopularArticles(popular);
@@ -389,13 +423,15 @@ export default function InsightDetailPage() {
     if (slug) load();
   }, [lang, slug]);
 
+  const isNews = article?.category === "news";
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin" />
           <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">
-            {isId ? "Memuat Artikel..." : "Loading Article..."}
+            {isId ? "Memuat Konten..." : "Loading Content..."}
           </p>
         </div>
       </main>
@@ -413,15 +449,15 @@ export default function InsightDetailPage() {
         </h2>
         <p className="text-slate-500 font-medium mb-8">
           {isId
-            ? "Artikel yang Anda cari tidak tersedia atau telah dihapus."
-            : "The article you are looking for is unavailable or has been deleted."}
+            ? "Konten yang Anda cari tidak tersedia atau telah dihapus."
+            : "The content you are looking for is unavailable or has been deleted."}
         </p>
         <Link
           href={`/${lang}/insights`}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-50 transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          {isId ? "Kembali ke Artikel" : "Back to Articles"}
+          {isId ? "Kembali ke Insights" : "Back to Insights"}
         </Link>
       </main>
     );
@@ -448,11 +484,11 @@ export default function InsightDetailPage() {
             <div className="flex flex-col min-h-0 lg:pr-2 xl:pr-4">
               <div ref={backBtnRef} className="pt-6 lg:pt-8">
                 <Link
-                  href={`/${lang}/insights`}
+                  href={`/${lang}/insights${isNews ? "?tab=news" : ""}`}
                   className="inline-flex items-center gap-2 text-[12px] md:text-[13px] font-bold text-emerald-400 hover:text-white transition-colors uppercase tracking-widest"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  {isId ? "Kembali" : "Back"}
+                  {isNews ? (isId ? "Kembali ke Berita" : "Back to News") : (isId ? "Kembali" : "Back")}
                 </Link>
               </div>
 
@@ -584,7 +620,13 @@ export default function InsightDetailPage() {
               
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
                 <h3 className="text-lg font-extrabold text-slate-900 mb-6 border-b border-slate-100 pb-4">
-                  {isId ? "Informasi Artikel" : "Article Information"}
+                  {isNews
+                    ? isId
+                      ? "Informasi Berita"
+                      : "News Information"
+                    : isId
+                      ? "Informasi Artikel"
+                      : "Article Information"}
                 </h3>
 
                 <div className="flex flex-col mb-8">
@@ -636,7 +678,7 @@ export default function InsightDetailPage() {
                       <span className="text-[13px] font-bold">{isId ? "Kategori" : "Category"}</span>
                     </div>
                     <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
-                      {topicLabel(article.topic, isId)}
+                      {topicLabel(article.topic, isId, isNews)}
                     </span>
                   </div>
                 </div>
@@ -646,7 +688,13 @@ export default function InsightDetailPage() {
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 flex flex-col">
                   <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-extrabold text-slate-900">
-                      {isId ? "Artikel Populer" : "Popular Insights"}
+                      {isNews
+                        ? isId
+                          ? "Berita Populer"
+                          : "Popular News"
+                        : isId
+                          ? "Artikel Populer"
+                          : "Popular Insights"}
                     </h3>
                   </div>
                   
@@ -690,10 +738,16 @@ export default function InsightDetailPage() {
           <div className="border-t border-slate-200/80 pt-16">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
               <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
-                {isId ? "Artikel Terkait" : "Related Articles"}
+                {isNews
+                  ? isId
+                    ? "Berita Terkait"
+                    : "Related News"
+                  : isId
+                    ? "Artikel Terkait"
+                    : "Related Articles"}
               </h3>
               <Link 
-                href={`/${lang}/insights`}
+                href={`/${lang}/insights${isNews ? "?tab=news" : ""}`}
                 className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors"
               >
                 {isId ? "Lihat Semua" : "View All"} <ArrowRight className="w-4 h-4"/>

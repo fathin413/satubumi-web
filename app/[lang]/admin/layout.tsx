@@ -25,8 +25,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 
 type NavItem = {
@@ -47,11 +46,7 @@ function resolveImageUrl(url?: string | null) {
   return `${BACKEND_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -63,8 +58,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     const check = async () => {
-      const token =
-        localStorage.getItem("access_token") || localStorage.getItem("token");
+      const token = localStorage.getItem("access_token") || localStorage.getItem("token");
       if (!token) {
         router.push(`/${lang}/login`);
         return;
@@ -177,7 +171,7 @@ export default function AdminLayout({
       items: [
         {
           href: `/${lang}/admin/insights`,
-          label: isId ? "Artikel" : "Article",
+          label: isId ? "Artikel & Berita" : "Articles & News",
           icon: Newspaper,
         },
         {
@@ -228,20 +222,15 @@ export default function AdminLayout({
     return name.substring(0, 2).toUpperCase();
   };
 
-  const profileSrc = resolveImageUrl(
-    user?.profile_image || user?.avatar || user?.image_url || user?.photo_url,
-  );
+  const profileSrc = resolveImageUrl(user?.profile_image || user?.avatar || user?.image_url || user?.photo_url);
 
   const renderNav = (onNavigate?: () => void) =>
     navGroups.map((group, groupIdx) => (
       <div
         key={group.title}
         className="mb-7 animate-in slide-in-from-left-4 fade-in duration-500 fill-mode-both"
-        style={{ animationDelay: `${groupIdx * 80}ms` }}
-      >
-        <p className="px-5 mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-700">
-          {group.title}
-        </p>
+        style={{ animationDelay: `${groupIdx * 80}ms` }}>
+        <p className="px-5 mb-3 text-[11px] font-extrabold uppercase tracking-widest text-slate-700">{group.title}</p>
         <div className="space-y-1 px-3">
           {group.items.map((item) => {
             const Icon = item.icon;
@@ -255,8 +244,7 @@ export default function AdminLayout({
                   active
                     ? "bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100/50"
                     : "text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 hover:translate-x-1"
-                }`}
-              >
+                }`}>
                 <Icon
                   className={`w-4 h-4 shrink-0 transition-transform duration-300 ${
                     active
@@ -290,10 +278,7 @@ export default function AdminLayout({
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:flex w-[280px] flex-col bg-white fixed inset-y-0 left-0 z-40 border-r border-slate-200 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div className="h-[76px] flex items-center pl-5 pr-8 border-b border-slate-200 shrink-0">
-          <Link
-            href={`/${lang}/admin`}
-            className="flex items-center gap-1 group"
-          >
+          <Link href={`/${lang}/admin`} className="flex items-center gap-1 group">
             <Image
               src="/logo.png"
               alt="Satubumi Logo"
@@ -302,9 +287,7 @@ export default function AdminLayout({
               className="h-7 w-auto object-contain transition-transform duration-500 ease-out group-hover:scale-105"
               unoptimized
             />
-            <span className="text-emerald-600 font-extrabold text-[20px] tracking-wide -mt-1">
-              Admin
-            </span>
+            <span className="text-emerald-600 font-extrabold text-[20px] tracking-wide -mt-1">Admin</span>
           </Link>
         </div>
 
@@ -316,25 +299,21 @@ export default function AdminLayout({
           <div className="p-4 flex flex-col gap-1.5">
             <Link
               href={`/${lang}`}
-              className="group flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-slate-600 hover:bg-white hover:text-slate-800 hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
-            >
+              className="group flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-slate-600 hover:bg-white hover:text-slate-800 hover:shadow-sm transition-all border border-transparent hover:border-slate-200">
               <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-700" />
               {isId ? "Lihat Website" : "View Website"}
             </Link>
             <button
               type="button"
               onClick={handleLogout}
-              className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-rose-700 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100"
-            >
+              className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-rose-700 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100">
               <LogOut className="w-4 h-4" />
               Log Out
             </button>
           </div>
 
           <div className="px-4 pb-5 flex flex-col items-center justify-center gap-2 border-t border-slate-200/80 pt-4">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-              Powered By
-            </p>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Powered By</p>
             <Image
               src="/logo2.png"
               alt="Satubumi Powered By"
@@ -350,17 +329,10 @@ export default function AdminLayout({
       {/* MOBILE SIDEBAR */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div
-            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
           <aside className="relative w-[280px] max-w-[80%] bg-white flex flex-col z-50 shadow-2xl border-r border-slate-200">
             <div className="h-[76px] flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
-              <Link
-                href={`/${lang}/admin`}
-                className="flex items-center gap-1.5"
-                onClick={() => setSidebarOpen(false)}
-              >
+              <Link href={`/${lang}/admin`} className="flex items-center gap-1.5" onClick={() => setSidebarOpen(false)}>
                 <Image
                   src="/logo.png"
                   alt="Satubumi Logo"
@@ -369,15 +341,12 @@ export default function AdminLayout({
                   className="h-6 w-auto object-contain"
                   unoptimized
                 />
-                <span className="text-emerald-600 font-extrabold text-[20px]">
-                  Admin
-                </span>
+                <span className="text-emerald-600 font-extrabold text-[20px]">Admin</span>
               </Link>
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-800"
-              >
+                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-800">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -390,8 +359,7 @@ export default function AdminLayout({
               <button
                 type="button"
                 onClick={handleLogout}
-                className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-100"
-              >
+                className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13.5px] font-bold text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-100">
                 <LogOut className="w-4 h-4" />
                 Log Out
               </button>
@@ -407,8 +375,7 @@ export default function AdminLayout({
             <button
               type="button"
               className="lg:hidden p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-800 shrink-0"
-              onClick={() => setSidebarOpen(true)}
-            >
+              onClick={() => setSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
             <div className="hidden md:flex items-center gap-2.5 text-[13px] font-bold text-slate-700 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200/80">
@@ -424,22 +391,16 @@ export default function AdminLayout({
                 type="button"
                 onClick={() => switchLang("id")}
                 className={`px-3 py-1.5 text-[11px] font-extrabold rounded-lg ${
-                  lang === "id"
-                    ? "bg-white text-emerald-800 shadow-sm"
-                    : "text-slate-500"
-                }`}
-              >
+                  lang === "id" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-500"
+                }`}>
                 ID
               </button>
               <button
                 type="button"
                 onClick={() => switchLang("en")}
                 className={`px-3 py-1.5 text-[11px] font-extrabold rounded-lg ${
-                  lang === "en"
-                    ? "bg-white text-emerald-800 shadow-sm"
-                    : "text-slate-500"
-                }`}
-              >
+                  lang === "en" ? "bg-white text-emerald-800 shadow-sm" : "text-slate-500"
+                }`}>
                 EN
               </button>
             </div>
@@ -448,15 +409,10 @@ export default function AdminLayout({
               <Link
                 href={`/${lang}/admin/profile`}
                 title={isId ? "Buka Pengaturan Profil Saya" : "Open My Profile Settings"}
-                className="flex items-center gap-3 min-w-0 max-w-[70%] sm:max-w-[280px] p-1.5 pr-3 rounded-2xl hover:bg-slate-100 transition-colors group cursor-pointer"
-              >
+                className="flex items-center gap-3 min-w-0 max-w-[70%] sm:max-w-[280px] p-1.5 pr-3 rounded-2xl hover:bg-slate-100 transition-colors group cursor-pointer">
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-sm shrink-0 group-hover:border-emerald-300 transition-colors">
                   {profileSrc ? (
-                    <img
-                      src={profileSrc}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={profileSrc} alt="" className="w-full h-full object-cover" />
                   ) : (
                     getInitials(user.full_name)
                   )}
@@ -475,10 +431,7 @@ export default function AdminLayout({
         </header>
 
         <div className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 xl:p-10 min-w-0">
-          <div
-            key={pathname}
-            className="animate-in fade-in duration-300 h-full min-w-0"
-          >
+          <div key={pathname} className="animate-in fade-in duration-300 h-full min-w-0">
             {children}
           </div>
         </div>
