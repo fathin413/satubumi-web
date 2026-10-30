@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { extractErrorMessage, getErrorMessage } from "@/lib/error";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
+
+type ContentCategory = "insight" | "news";
 
 type Article = {
   id: number;
@@ -61,6 +62,13 @@ export default function AdminInsightsListPage() {
   const lang = (params?.lang as string) || "en";
   const isId = lang === "id";
 
+  const [category, setCategory] = useState<ContentCategory>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("category") === "news"
+      ? "news"
+      : "insight",
+  );
+  const isNews = category === "news";
+
   const [items, setItems] = useState<Article[]>([]);
   const [topics, setTopics] = useState<TopicOption[]>([]);
   const [activeTopic, setActiveTopic] = useState<string>("all");
@@ -77,17 +85,9 @@ export default function AdminInsightsListPage() {
     setLoading(true);
     try {
       const apiLang = lang === "en" ? "en" : "id";
-      const res = await fetch(
-        `${API_URL}/articles/?category=insight&lang=${apiLang}`
-      );
+      const res = await fetch(`${API_URL}/articles/?category=${category}&lang=${apiLang}`);
       if (!res.ok) {
-        throw new Error(
-          await extractErrorMessage(
-            res,
-            isId ? "Gagal memuat insights" : "Failed to load insights",
-            lang
-          )
-        );
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal memuat data" : "Failed to load data", lang));
       }
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
@@ -101,7 +101,7 @@ export default function AdminInsightsListPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [lang, category]);
 
   useEffect(() => {
     const loadTopics = async () => {
@@ -126,6 +126,13 @@ export default function AdminInsightsListPage() {
     return () => clearTimeout(t);
   }, [success, error]);
 
+  const switchCategory = (next: ContentCategory) => {
+    if (next === category) return;
+    setCategory(next);
+    setActiveTopic("all");
+    setQ("");
+  };
+
   const confirmDelete = async () => {
     if (!toDelete) return;
     setDeleting(true);
@@ -135,12 +142,18 @@ export default function AdminInsightsListPage() {
         headers: { Authorization: `Bearer ${token()}` },
       });
       if (!res.ok) {
-        throw new Error(
-          await extractErrorMessage(res, isId ? "Gagal menghapus" : "Delete failed", lang)
-        );
+        throw new Error(await extractErrorMessage(res, isId ? "Gagal menghapus" : "Delete failed", lang));
       }
       setItems((prev) => prev.filter((x) => x.id !== toDelete.id));
-      setSuccess(isId ? "Insight berhasil dihapus." : "Insight deleted.");
+      setSuccess(
+        isNews
+          ? isId
+            ? "Berita berhasil dihapus."
+            : "News deleted."
+          : isId
+            ? "Insight berhasil dihapus."
+            : "Insight deleted.",
+      );
       setToDelete(null);
     } catch (e: unknown) {
       setError(getErrorMessage(e));
@@ -182,14 +195,11 @@ export default function AdminInsightsListPage() {
                 <h3 className="text-[18px] font-extrabold text-slate-800 mb-2">
                   {isId ? "Gagal Memproses" : "Action Failed"}
                 </h3>
-                <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">
-                  {error}
-                </p>
+                <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">{error}</p>
                 <button
                   type="button"
                   onClick={() => setError(null)}
-                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 transition-colors text-rose-600 text-[14px] font-bold rounded-xl active:scale-95"
-                >
+                  className="w-full py-3 bg-rose-50 hover:bg-rose-100 transition-colors text-rose-600 text-[14px] font-bold rounded-xl active:scale-95">
                   {isId ? "Tutup" : "Close"}
                 </button>
               </>
@@ -198,17 +208,12 @@ export default function AdminInsightsListPage() {
                 <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
                   <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                 </div>
-                <h3 className="text-[18px] font-extrabold text-slate-800 mb-2">
-                  {isId ? "Berhasil" : "Success"}
-                </h3>
-                <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">
-                  {success}
-                </p>
+                <h3 className="text-[18px] font-extrabold text-slate-800 mb-2">{isId ? "Berhasil" : "Success"}</h3>
+                <p className="text-[13px] font-medium text-slate-500 mb-6 leading-relaxed">{success}</p>
                 <button
                   type="button"
                   onClick={() => setSuccess(null)}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 transition-all text-white text-[14px] font-bold rounded-xl shadow-sm active:scale-95"
-                >
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 transition-all text-white text-[14px] font-bold rounded-xl shadow-sm active:scale-95">
                   {isId ? "Tutup" : "Close"}
                 </button>
               </>
@@ -225,31 +230,31 @@ export default function AdminInsightsListPage() {
               <AlertTriangle className="w-6 h-6 text-rose-500" />
             </div>
             <h3 className="text-[18px] font-extrabold text-slate-900 mb-2">
-              {isId ? "Hapus Insight Ini?" : "Delete This Insight?"}
+              {isNews
+                ? isId
+                  ? "Hapus Berita Ini?"
+                  : "Delete This News?"
+                : isId
+                  ? "Hapus Insight Ini?"
+                  : "Delete This Insight?"}
             </h3>
             <p className="text-[13.5px] text-slate-500 mb-8 leading-relaxed">
-              <span className="font-extrabold text-slate-800">
-                {displayTitle(toDelete, isId)}
-              </span>
+              <span className="font-extrabold text-slate-800">{displayTitle(toDelete, isId)}</span>
               <br />
-              {isId
-                ? "Artikel ini akan dihapus secara permanen."
-                : "This article will be permanently deleted."}
+              {isId ? "Artikel ini akan dihapus secara permanen." : "This article will be permanently deleted."}
             </p>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setToDelete(null)}
-                className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 transition-colors text-[13.5px] font-bold text-slate-600 rounded-xl active:scale-95"
-              >
+                className="flex-1 py-3 border border-slate-200 hover:bg-slate-50 transition-colors text-[13.5px] font-bold text-slate-600 rounded-xl active:scale-95">
                 {isId ? "Batal" : "Cancel"}
               </button>
               <button
                 type="button"
                 onClick={confirmDelete}
                 disabled={deleting}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-600 hover:bg-rose-700 transition-all text-white text-[13.5px] font-bold rounded-xl shadow-sm disabled:opacity-70 active:scale-95"
-              >
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-600 hover:bg-rose-700 transition-all text-white text-[13.5px] font-bold rounded-xl shadow-sm disabled:opacity-70 active:scale-95">
                 {deleting ? (
                   <div className="w-4 h-4 border-2 border-rose-200 border-t-white rounded-full animate-spin" />
                 ) : (
@@ -265,24 +270,47 @@ export default function AdminInsightsListPage() {
       )}
 
       {/* HEADER */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
-            Insights Library
+            {isNews ? "News Library" : "Insights Library"}
           </h1>
           <p className="text-slate-500 font-medium text-[13.5px]">
-            {isId
-              ? "Kelola semua artikel dan perspektif analisis publik Anda."
-              : "Manage all your published articles and public perspectives."}
+            {isNews
+              ? isId
+                ? "Kelola semua berita yang tampil di tab News website."
+                : "Manage all news shown in the website News tab."
+              : isId
+                ? "Kelola semua artikel dan perspektif analisis publik Anda."
+                : "Manage all your published articles and public perspectives."}
           </p>
         </div>
         <Link
-          href={`/${lang}/admin/insights/new`}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[14px] font-bold hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg transition-all active:scale-95 shrink-0 shadow-md"
-        >
+          href={`/${lang}/admin/insights/new?category=${category}`}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-[14px] font-bold hover:bg-emerald-700 hover:-translate-y-0.5 hover:shadow-lg transition-all active:scale-95 shrink-0 shadow-md">
           <Plus className="w-4 h-4" />
-          {isId ? "Insight Baru" : "New Insight"}
+          {isNews ? (isId ? "Berita Baru" : "New News") : isId ? "Insight Baru" : "New Insight"}
         </Link>
+      </div>
+
+      {/* CATEGORY TABS */}
+      <div className="mb-5 inline-flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => switchCategory("insight")}
+          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-all ${
+            category === "insight" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
+          }`}>
+          {isId ? "Artikel" : "Articles"}
+        </button>
+        <button
+          type="button"
+          onClick={() => switchCategory("news")}
+          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-all ${
+            category === "news" ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
+          }`}>
+          {isId ? "Berita" : "News"}
+        </button>
       </div>
 
       {/* FILTER + SEARCH */}
@@ -293,33 +321,34 @@ export default function AdminInsightsListPage() {
           placeholder={isId ? "Cari judul…" : "Search title…"}
           className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-[14px] font-medium outline-none focus:border-emerald-500"
         />
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTopic("all")}
-            className={`px-3 py-2 rounded-xl text-[12px] font-bold border ${
-              activeTopic === "all"
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-slate-600 border-slate-200"
-            }`}
-          >
-            {isId ? "Semua" : "All"}
-          </button>
-          {topics.map((t) => (
+        {/* Filter topik hanya untuk Articles */}
+        {!isNews && (
+          <div className="flex flex-wrap gap-2">
             <button
-              key={t.slug}
               type="button"
-              onClick={() => setActiveTopic(t.slug)}
+              onClick={() => setActiveTopic("all")}
               className={`px-3 py-2 rounded-xl text-[12px] font-bold border ${
-                activeTopic === t.slug
+                activeTopic === "all"
                   ? "bg-emerald-600 text-white border-emerald-600"
                   : "bg-white text-slate-600 border-slate-200"
-              }`}
-            >
-              {isId ? t.label_id : t.label_en}
+              }`}>
+              {isId ? "Semua" : "All"}
             </button>
-          ))}
-        </div>
+            {topics.map((t) => (
+              <button
+                key={t.slug}
+                type="button"
+                onClick={() => setActiveTopic(t.slug)}
+                className={`px-3 py-2 rounded-xl text-[12px] font-bold border ${
+                  activeTopic === t.slug
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white text-slate-600 border-slate-200"
+                }`}>
+                {isId ? t.label_id : t.label_en}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* LIST */}
@@ -329,17 +358,26 @@ export default function AdminInsightsListPage() {
             <FileText className="w-8 h-8 text-slate-300" />
           </div>
           <h3 className="text-[18px] font-extrabold text-slate-900 mb-2">
-            {isId ? "Belum Ada Insight" : "No Insights Published"}
+            {isNews
+              ? isId
+                ? "Belum Ada Berita"
+                : "No News Published"
+              : isId
+                ? "Belum Ada Insight"
+                : "No Insights Published"}
           </h3>
           <p className="text-slate-500 font-medium text-[13.5px] max-w-sm mb-8">
-            {isId
-              ? "Mulai bagikan artikel, analisis, dan perspektif pertama Anda."
-              : "Start sharing your first article, analysis, and perspective."}
+            {isNews
+              ? isId
+                ? "Mulai bagikan berita pertama Anda."
+                : "Start sharing your first news."
+              : isId
+                ? "Mulai bagikan artikel, analisis, dan perspektif pertama Anda."
+                : "Start sharing your first article, analysis, and perspective."}
           </p>
           <Link
-            href={`/${lang}/admin/insights/new`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white text-[14px] font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-md active:scale-95"
-          >
+            href={`/${lang}/admin/insights/new?category=${category}`}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white text-[14px] font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-md active:scale-95">
             <Plus className="w-4 h-4" />
             {isId ? "Mulai Menulis" : "Start Writing"}
           </Link>
@@ -347,9 +385,7 @@ export default function AdminInsightsListPage() {
       ) : visible.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-[1.5rem] p-12 text-center">
           <p className="text-slate-500 font-medium text-[14px]">
-            {isId
-              ? "Tidak ada insight yang cocok dengan filter atau pencarian."
-              : "No insights match your filter or search."}
+            {isId ? "Tidak ada data yang cocok dengan filter atau pencarian." : "No items match your filter or search."}
           </p>
         </div>
       ) : (
@@ -362,8 +398,7 @@ export default function AdminInsightsListPage() {
               <div
                 key={item.id}
                 className="group bg-white border border-slate-200 hover:border-emerald-300/80 rounded-[1.25rem] p-4 flex flex-col md:flex-row md:items-center gap-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-both"
-                style={{ animationDelay: `${index * 40}ms` }}
-              >
+                style={{ animationDelay: `${index * 40}ms` }}>
                 <div className="w-full sm:w-28 md:w-32 aspect-[16/10] rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100 relative">
                   {img ? (
                     <img
@@ -385,23 +420,20 @@ export default function AdminInsightsListPage() {
                         isPub
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200/50"
                           : "bg-slate-50 text-slate-600 border-slate-200"
-                      }`}
-                    >
+                      }`}>
                       {item.status}
                     </span>
                   </div>
 
                   <h3
                     className="text-[16px] md:text-[17px] font-extrabold text-slate-900 truncate mb-1 group-hover:text-emerald-700 transition-colors"
-                    title={displayTitle(item, isId)}
-                  >
+                    title={displayTitle(item, isId)}>
                     {displayTitle(item, isId)}
                   </h3>
 
                   <p
                     className="text-[13px] text-slate-500 font-medium truncate flex items-center gap-2"
-                    title={`/${lang}/insights/${item.slug}`}
-                  >
+                    title={`/${lang}/insights/${item.slug}`}>
                     <span>{formatDate(item.created_at)}</span>
                     {item.slug && (
                       <>
@@ -419,15 +451,13 @@ export default function AdminInsightsListPage() {
                     href={`/${lang}/insights/${item.slug}`}
                     target="_blank"
                     className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
-                    title={isId ? "Pratinjau Publik" : "Preview"}
-                  >
+                    title={isId ? "Pratinjau Publik" : "Preview"}>
                     <ExternalLink className="w-4 h-4" />
                   </Link>
 
                   <Link
                     href={`/${lang}/admin/insights/${item.id}/edit`}
-                    className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-50 text-emerald-700 text-[13px] font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                  >
+                    className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-50 text-emerald-700 text-[13px] font-bold hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
                     <Pencil className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Edit</span>
                   </Link>
@@ -436,8 +466,7 @@ export default function AdminInsightsListPage() {
                     type="button"
                     onClick={() => setToDelete(item)}
                     className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                    title={isId ? "Hapus" : "Delete"}
-                  >
+                    title={isId ? "Hapus" : "Delete"}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

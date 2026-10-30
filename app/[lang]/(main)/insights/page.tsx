@@ -3,25 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  ArrowUpRight,
-  Newspaper,
-  Star,
-  Users,
-  Clock,
-  TrendingUp,
-  Tag,
-  ChevronRight,
-  Eye,
-  Search,
-} from "lucide-react";
+import { ArrowUpRight, Newspaper, Star, Users, Clock, TrendingUp, Tag, ChevronRight, Eye, Search } from "lucide-react";
 import ScrollReveal from "../../../../components/ScrollReveal";
 import InsightTabs from "@/components/insights/InsightTabs";
 import RulebookSection from "@/components/insights/RulebookSection";
 import { parseBlocks } from "@/components/admin/ContentBlocksEditor";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const BACKEND_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
 
 type Article = {
@@ -80,9 +68,7 @@ function stripHtml(html: string) {
 function excerptFromContent(content: string, max = 160) {
   const blocks = parseBlocks(content);
   const plain = blocks
-    .map((b) =>
-      b.type === "text" ? stripHtml(b.htmlId || b.htmlEn || "") : "",
-    )
+    .map((b) => (b.type === "text" ? stripHtml(b.htmlId || b.htmlEn || "") : ""))
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
@@ -104,30 +90,16 @@ function formatDate(iso?: string, lang?: string) {
   }
 }
 
-function InsightCard({
-  item,
-  lang,
-  isId,
-  index,
-}: {
-  item: Article;
-  lang: string;
-  isId: boolean;
-  index: number;
-}) {
+function InsightCard({ item, lang, isId, index }: { item: Article; lang: string; isId: boolean; index: number }) {
   const img =
     resolveImageUrl(item.image_url) ||
     "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80";
 
   return (
-    <ScrollReveal
-      delay={`delay-${Math.min((index % 2) * 100, 300)}`}
-      className="h-full"
-    >
+    <ScrollReveal delay={`delay-${Math.min((index % 2) * 100, 300)}`} className="h-full">
       <Link
         href={`/${lang}/insights/${item.slug}`}
-        className="group flex flex-col h-full bg-white rounded-3xl border border-stone-100 overflow-hidden transition-all duration-300 hover:border-emerald-300 hover:shadow-xl hover:-translate-y-1"
-      >
+        className="group flex flex-col h-full bg-white rounded-3xl border border-stone-100 overflow-hidden transition-all duration-300 hover:border-emerald-300 hover:shadow-xl hover:-translate-y-1">
         <div className="aspect-[16/10] overflow-hidden relative bg-stone-100 p-2">
           <div className="w-full h-full rounded-2xl overflow-hidden relative">
             <img
@@ -213,22 +185,20 @@ export default function InsightsPage() {
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"article" | "rulebook">("article");
+  const [activeTab, setActiveTab] = useState<"article" | "news" | "rulebook">("article");
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
 
+      const category = activeTab === "news" ? "news" : "insight";
       const apiLang = lang === "en" ? "en" : "id";
-      const topicQ = activeTopic
-        ? `&topic=${encodeURIComponent(activeTopic)}`
-        : "";
+      const topicQ = activeTopic ? `&topic=${encodeURIComponent(activeTopic)}` : "";
 
       try {
-        const listRes = await fetch(
-          `${API_URL}/articles/?category=insight&lang=${apiLang}${topicQ}`,
-          { cache: "no-store" }
-        );
+        const listRes = await fetch(`${API_URL}/articles/?category=${category}&lang=${apiLang}${topicQ}`, {
+          cache: "no-store",
+        });
 
         if (!listRes.ok) {
           throw new Error(`Articles API error: ${listRes.status}`);
@@ -236,9 +206,7 @@ export default function InsightsPage() {
 
         const list = await listRes.json();
 
-        const publishedArticles = Array.isArray(list)
-          ? list.filter((a: Article) => a.status === "published")
-          : [];
+        const publishedArticles = Array.isArray(list) ? list.filter((a: Article) => a.status === "published") : [];
 
         // Featured dulu, lalu terbaru
         setItems(
@@ -247,47 +215,40 @@ export default function InsightsPage() {
             const fb = b.is_featured ? 1 : 0;
             if (fb !== fa) return fb - fa;
             return b.id - a.id;
-          })
+          }),
         );
 
         // Hero: prioritas is_featured, fallback view tertinggi
         const featured =
           publishedArticles.find((a) => a.is_featured) ||
-          [...publishedArticles].sort(
-            (a, b) => (b.view_count || 0) - (a.view_count || 0)
-          )[0] ||
+          [...publishedArticles].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0] ||
           null;
 
         setTopInsights(
-          featured
-            ? [
-                featured,
-                ...publishedArticles.filter((a) => a.id !== featured.id),
-              ]
-            : publishedArticles
+          featured ? [featured, ...publishedArticles.filter((a) => a.id !== featured.id)] : publishedArticles,
         );
+
+        if (category !== "insight") {
+          setTopAuthors([]);
+          setTopics([]);
+          return;
+        }
 
         const [authorsResult, topicsResult] = await Promise.allSettled([
           fetch(`${API_URL}/articles/insights/top-authors?limit=5`, {
             cache: "no-store",
           }).then((res) => (res.ok ? res.json() : [])),
-          fetch(`${API_URL}/articles/insights/topics`).then((res) =>
-            res.ok ? res.json() : []
-          ),
+          fetch(`${API_URL}/articles/insights/topics`).then((res) => (res.ok ? res.json() : [])),
         ]);
 
         if (authorsResult.status === "fulfilled") {
-          setTopAuthors(
-            Array.isArray(authorsResult.value) ? authorsResult.value : []
-          );
+          setTopAuthors(Array.isArray(authorsResult.value) ? authorsResult.value : []);
         } else {
           setTopAuthors([]);
         }
 
         if (topicsResult.status === "fulfilled") {
-          setTopics(
-            Array.isArray(topicsResult.value) ? topicsResult.value : []
-          );
+          setTopics(Array.isArray(topicsResult.value) ? topicsResult.value : []);
         } else {
           setTopics([]);
         }
@@ -302,7 +263,7 @@ export default function InsightsPage() {
       }
     };
 
-    if (activeTab === "article") {
+    if (activeTab !== "rulebook") {
       load();
     } else {
       setLoading(false);
@@ -310,17 +271,12 @@ export default function InsightsPage() {
   }, [lang, activeTopic, activeTab]);
 
   const filterTopics: TopicItem[] =
-    topics.length > 0
-      ? topics
-      : Object.keys(TOPIC_LABELS).map((t) => ({ topic: t, count: 0 }));
+    topics.length > 0 ? topics : Object.keys(TOPIC_LABELS).map((t) => ({ topic: t, count: 0 }));
 
   const displayedArticles = items.filter((item) => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return (
-      item.title.toLowerCase().includes(q) ||
-      excerptFromContent(item.content).toLowerCase().includes(q)
-    );
+    return item.title.toLowerCase().includes(q) || excerptFromContent(item.content).toLowerCase().includes(q);
   });
 
   const featuredArticle = topInsights.length > 0 ? topInsights[0] : null;
@@ -343,9 +299,7 @@ export default function InsightsPage() {
               <span className="w-6 h-px bg-emerald-400/60" />
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">
-              Insights
-            </h1>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6">Insights</h1>
 
             <p className="text-lg md:text-xl text-emerald-50/80 font-medium max-w-2xl mx-auto leading-relaxed mb-10">
               {isId
@@ -353,16 +307,12 @@ export default function InsightsPage() {
                 : "Scientific and practical perspectives on climate, carbon, and sustainability."}
             </p>
 
-            {activeTab === "article" && (
+            {activeTab !== "rulebook" && (
               <div className="relative w-full max-w-2xl mx-auto mb-8">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
                 <input
                   type="text"
-                  placeholder={
-                    isId
-                      ? "Cari wawasan, topik, atau penulis..."
-                      : "Search insights, topics, or authors..."
-                  }
+                  placeholder={isId ? "Cari wawasan, topik, atau penulis..." : "Search insights, topics, or authors..."}
                   className="w-full pl-14 pr-6 py-4 bg-white rounded-full text-[15px] font-medium text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all shadow-2xl"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -374,9 +324,8 @@ export default function InsightsPage() {
               activeTab={activeTab}
               setActiveTab={(tab) => {
                 setActiveTab(tab);
-                if (tab === "rulebook") {
-                  setSearchQuery("");
-                }
+                setActiveTopic(null);
+                setSearchQuery("");
               }}
             />
           </ScrollReveal>
@@ -385,14 +334,14 @@ export default function InsightsPage() {
 
       {/* CONTENT */}
       <div className="max-w-[1440px] mx-auto px-6 -mt-12 relative z-10">
-        {activeTab === "article" && loading ? (
+        {activeTab !== "rulebook" && loading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-32">
             <div className="w-10 h-10 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
             <p className="text-xs font-bold uppercase tracking-widest text-stone-400 animate-pulse">
               {isId ? "Memuat insights…" : "Loading insights…"}
             </p>
           </div>
-        ) : activeTab === "article" ? (
+        ) : activeTab !== "rulebook" ? (
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
             {/* KOLOM KIRI */}
             <div className="w-full lg:w-[65%] flex flex-col gap-10">
@@ -423,10 +372,7 @@ export default function InsightsPage() {
                       </div>
                     </div>
 
-                    <Link
-                      href={`/${lang}/insights/${featuredArticle.slug}`}
-                      className="group block px-6 md:px-8 py-8"
-                    >
+                    <Link href={`/${lang}/insights/${featuredArticle.slug}`} className="group block px-6 md:px-8 py-8">
                       <h3 className="text-3xl md:text-4xl font-extrabold text-stone-900 leading-[1.2] mb-4 group-hover:text-emerald-700 transition-colors tracking-tight">
                         {featuredArticle.title}
                       </h3>
@@ -440,19 +386,13 @@ export default function InsightsPage() {
                           <div className="w-12 h-12 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 shadow-sm">
                             {featuredArticle.author_profile_image ? (
                               <img
-                                src={
-                                  resolveImageUrl(
-                                    featuredArticle.author_profile_image
-                                  ) || ""
-                                }
+                                src={resolveImageUrl(featuredArticle.author_profile_image) || ""}
                                 alt={featuredArticle.author || "Author"}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
                               <span className="text-sm font-extrabold text-emerald-600">
-                                {(featuredArticle.author || "S")
-                                  .charAt(0)
-                                  .toUpperCase()}
+                                {(featuredArticle.author || "S").charAt(0).toUpperCase()}
                               </span>
                             )}
                           </div>
@@ -503,8 +443,7 @@ export default function InsightsPage() {
                               : "All Publications"}
                       </h2>
                       <p className="text-[12px] font-medium text-stone-400">
-                        {displayedArticles.length}{" "}
-                        {isId ? "artikel ditemukan" : "articles found"}
+                        {displayedArticles.length} {isId ? "artikel ditemukan" : "articles found"}
                       </p>
                     </div>
                   </div>
@@ -516,21 +455,13 @@ export default function InsightsPage() {
                       <Newspaper className="w-6 h-6 text-stone-300" />
                     </div>
                     <p className="text-stone-500 font-medium text-[15px]">
-                      {isId
-                        ? "Tidak ada artikel yang sesuai dengan pencarian."
-                        : "No articles match your search."}
+                      {isId ? "Tidak ada artikel yang sesuai dengan pencarian." : "No articles match your search."}
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
                     {displayedArticles.map((item, i) => (
-                      <InsightCard
-                        key={item.id}
-                        item={item}
-                        lang={lang}
-                        isId={isId}
-                        index={i}
-                      />
+                      <InsightCard key={item.id} item={item} lang={lang} isId={isId} index={i} />
                     ))}
                   </div>
                 )}
@@ -540,57 +471,51 @@ export default function InsightsPage() {
             {/* KOLOM KANAN */}
             <div className="w-full lg:w-[35%] flex flex-col gap-6">
               {/* TOPICS */}
-              <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Tag className="w-4 h-4" />
+              {activeTab === "article" && (
+                <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Tag className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-[15px] font-extrabold text-stone-900">
+                      {isId ? "Eksplorasi Topik" : "Explore Topics"}
+                    </h3>
                   </div>
-                  <h3 className="text-[15px] font-extrabold text-stone-900">
-                    {isId ? "Eksplorasi Topik" : "Explore Topics"}
-                  </h3>
-                </div>
 
-                <div className="flex flex-wrap gap-2.5">
-                  <button
-                    onClick={() => {
-                      setActiveTopic(null);
-                      setSearchQuery("");
-                    }}
-                    className={`px-4 py-2 rounded-xl text-[13px] font-bold border transition-all duration-300 ${
-                      activeTopic === null
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20"
-                        : "bg-white hover:bg-stone-50 border-stone-200 text-stone-600"
-                    }`}
-                  >
-                    {isId ? "Semua Topik" : "All Topics"}
-                  </button>
-                  {filterTopics.map((t) => (
+                  <div className="flex flex-wrap gap-2.5">
                     <button
-                      key={t.topic}
                       onClick={() => {
-                        setActiveTopic(t.topic);
+                        setActiveTopic(null);
                         setSearchQuery("");
                       }}
                       className={`px-4 py-2 rounded-xl text-[13px] font-bold border transition-all duration-300 ${
-                        activeTopic === t.topic
+                        activeTopic === null
                           ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20"
                           : "bg-white hover:bg-stone-50 border-stone-200 text-stone-600"
-                      }`}
-                    >
-                      {topicLabel(t.topic, isId)}{" "}
-                      <span
-                        className={
-                          activeTopic === t.topic
-                            ? "text-emerald-200 ml-1"
-                            : "text-stone-400 ml-1"
-                        }
-                      >
-                        {t.count}
-                      </span>
+                      }`}>
+                      {isId ? "Semua Topik" : "All Topics"}
                     </button>
-                  ))}
-                </div>
-              </ScrollReveal>
+                    {filterTopics.map((t) => (
+                      <button
+                        key={t.topic}
+                        onClick={() => {
+                          setActiveTopic(t.topic);
+                          setSearchQuery("");
+                        }}
+                        className={`px-4 py-2 rounded-xl text-[13px] font-bold border transition-all duration-300 ${
+                          activeTopic === t.topic
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20"
+                            : "bg-white hover:bg-stone-50 border-stone-200 text-stone-600"
+                        }`}>
+                        {topicLabel(t.topic, isId)}{" "}
+                        <span className={activeTopic === t.topic ? "text-emerald-200 ml-1" : "text-stone-400 ml-1"}>
+                          {t.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollReveal>
+              )}
 
               {/* LATEST / PER TOPIK */}
               <ScrollReveal className="bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm">
@@ -599,11 +524,7 @@ export default function InsightsPage() {
                     <Newspaper className="w-4 h-4" />
                   </div>
                   <h3 className="text-[15px] font-extrabold text-stone-900">
-                    {activeTopic
-                      ? topicLabel(activeTopic, isId)
-                      : isId
-                        ? "Artikel terbaru"
-                        : "Latest articles"}
+                    {activeTopic ? topicLabel(activeTopic, isId) : isId ? "Artikel terbaru" : "Latest articles"}
                   </h3>
                 </div>
 
@@ -612,8 +533,7 @@ export default function InsightsPage() {
                     <Link
                       key={`side-list-${article.id}`}
                       href={`/${lang}/insights/${article.slug}`}
-                      className="group py-4 first:pt-0 last:pb-0 flex gap-3"
-                    >
+                      className="group py-4 first:pt-0 last:pb-0 flex gap-3">
                       <div className="w-16 h-16 rounded-xl overflow-hidden bg-stone-100 shrink-0">
                         <img
                           src={
@@ -655,8 +575,7 @@ export default function InsightsPage() {
                       <Link
                         key={`side-${article.id}`}
                         href={`/${lang}/insights/${article.slug}`}
-                        className="group flex gap-4 items-start"
-                      >
+                        className="group flex gap-4 items-start">
                         <span className="text-3xl font-black text-stone-200 group-hover:text-emerald-300 transition-colors shrink-0 leading-none pt-1">
                           0{idx + 2}
                         </span>
@@ -695,14 +614,12 @@ export default function InsightsPage() {
 
                   <div className="flex flex-col gap-2">
                     {topAuthors.slice(0, 5).map((a) => {
-                      const authorImage =
-                        a.author_profile_image || a.profile_image;
+                      const authorImage = a.author_profile_image || a.profile_image;
 
                       return (
                         <div
                           key={a.author}
-                          className="flex items-center justify-between p-3 rounded-2xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all cursor-default"
-                        >
+                          className="flex items-center justify-between p-3 rounded-2xl hover:bg-stone-50 border border-transparent hover:border-stone-100 transition-all cursor-default">
                           <div className="flex items-center gap-3.5">
                             <div className="w-10 h-10 rounded-full overflow-hidden bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                               {authorImage ? (
@@ -718,9 +635,7 @@ export default function InsightsPage() {
                               )}
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-[14px] font-extrabold text-stone-800">
-                                {a.author}
-                              </span>
+                              <span className="text-[14px] font-extrabold text-stone-800">{a.author}</span>
                               <span className="text-[11px] font-bold text-emerald-600 mt-0.5">
                                 {a.count} {isId ? "Artikel" : "Articles"}
                               </span>
