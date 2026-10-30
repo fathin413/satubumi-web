@@ -1353,8 +1353,8 @@ export default function ProductsPage() {
                 <div className="relative mt-4">
                   {/* OVERLAY GEMBOK — hanya muncul jika is_unlocked === false */}
                   {!results.is_unlocked && (
-                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] rounded-[2.5rem] p-8 md:p-10 max-w-lg w-full flex flex-col items-center animate-in zoom-in-95 duration-500">
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+                      <div className="bg-white/90 backdrop-blur-xl border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] rounded-[2.5rem] p-8 md:p-10 max-w-lg w-full flex flex-col items-center animate-in zoom-in-95 duration-500 pointer-events-auto">
                         <div className="w-16 h-16 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl flex items-center justify-center shadow-inner mb-5 border border-emerald-200">
                           <LockKeyhole className="w-7 h-7 text-emerald-600" />
                         </div>
@@ -1403,8 +1403,8 @@ export default function ProductsPage() {
                     </div>
                   )}
 
-                  {/* KONTEN — blur jika terkunci, normal jika terbuka */}
-                  <div className={!results.is_unlocked ? "opacity-40 blur-[8px] pointer-events-none select-none flex flex-col gap-8" : "flex flex-col gap-8"}>
+                  {/* KONTEN — judul tetap terlihat jelas, nilai angka ter-blur jika terkunci */}
+                  <div className="flex flex-col gap-8">
                     
                     {/* Currency Switcher */}
                     <div className="flex flex-wrap items-center justify-between gap-4 p-4 md:px-6 md:py-4 bg-emerald-50/60 rounded-2xl border border-emerald-100/80">
@@ -1462,18 +1462,21 @@ export default function ProductsPage() {
                         value={formatNumber(results.acc_total_credits)}
                         unit={isId ? "kredit (tCO₂e)" : "credits (tCO₂e)"}
                         icon={TrendingUp}
+                        isLocked={!results.is_unlocked}
                       />
                       <Metric
                         label={isId ? "Pendapatan Kotor" : "Gross Revenue"}
                         sublabel={isId ? "Estimasi total akumulasi pendapatan kotor proyek karbon" : "Estimated total gross revenue from carbon project"}
                         value={formatCurrency(results.gross_revenue_usd)}
                         icon={CircleDollarSign}
+                        isLocked={!results.is_unlocked}
                       />
                       <Metric
                         label={isId ? "Total Biaya Proyek" : "Total Project Cost"}
                         sublabel={isId ? "Akumulasi belanja modal (CAPEX) & operasional (OPEX)" : "Accumulated capital expenditure (CAPEX) & operating costs (OPEX)"}
                         value={formatCurrency(results.cost_breakdown?.total_cost_usd ?? results.total_cost_usd)}
                         icon={Wallet}
+                        isLocked={!results.is_unlocked}
                       />
                       <Metric
                         label={isId ? "Pendapatan Bersih" : "Net Revenue"}
@@ -1481,6 +1484,7 @@ export default function ProductsPage() {
                         value={formatCurrency(results.net_revenue_usd)}
                         highlight
                         icon={LineChart}
+                        isLocked={!results.is_unlocked}
                       />
                     </div>
 
@@ -1533,7 +1537,7 @@ export default function ProductsPage() {
                                 <c.ic className={`w-5 h-5 mb-2 ${c.color} opacity-80`} />
                                 <p className="text-[11px] font-extrabold tracking-widest uppercase text-emerald-900 mb-0.5">{c.l}</p>
                                 <p className="text-[10px] font-medium text-emerald-700/60 mb-2 leading-tight">{c.desc}</p>
-                                <p className="text-2xl font-extrabold text-emerald-950">{Number(results.component_scores[c.k] ?? 0).toFixed(0)}</p>
+                                <p className={`text-2xl font-extrabold text-emerald-950 ${!results.is_unlocked ? "filter blur-[7px] select-none opacity-50" : ""}`}>{Number(results.component_scores[c.k] ?? 0).toFixed(0)}</p>
                               </div>
                             </div>
                           ))}
@@ -1553,24 +1557,28 @@ export default function ProductsPage() {
                             sublabel={isId ? "CAPEX (Capital Expenditure): Studi kelayakan teknis, PDD, dan perizinan" : "CAPEX (Capital Expenditure): Technical feasibility study, PDD, and permits"}
                             value={formatCurrency(results.cost_breakdown.development_cost_usd)}
                             icon={TrendingUp}
+                            isLocked={!results.is_unlocked}
                           />
                           <Metric
                             label={isId ? "Biaya MRV" : "MRV Cost"}
                             sublabel={isId ? "MRV (Measurement, Reporting & Verification): Pengukuran biomassa dan audit satelit" : "MRV (Measurement, Reporting & Verification): Biomass measurement and satellite monitoring"}
                             value={formatCurrency(results.cost_breakdown.mrv_cost_usd)}
                             icon={BarChart3}
+                            isLocked={!results.is_unlocked}
                           />
                           <Metric
                             label={isId ? "Biaya Validasi" : "Validation Cost"}
                             sublabel={isId ? "VVB (Validation & Verification Body): Audit pihak ketiga metodologi karbon" : "VVB (Validation & Verification Body): Third-party independent carbon audit"}
                             value={formatCurrency(results.cost_breakdown.validation_cost_usd)}
                             icon={ShieldCheck}
+                            isLocked={!results.is_unlocked}
                           />
                           <Metric
                             label={isId ? "Biaya Operasional" : "Operational Cost"}
                             sublabel={isId ? "OPEX (Operational Expenditure): Pemeliharaan rutin dan patroli penjagaan hutan" : "OPEX (Operational Expenditure): Routine maintenance and forest patrols"}
                             value={formatCurrency(results.cost_breakdown.operational_cost_usd)}
                             icon={Activity}
+                            isLocked={!results.is_unlocked}
                           />
                         </div>
                       </div>
@@ -1615,7 +1623,7 @@ export default function ProductsPage() {
                                         </p>
                                       ) : null}
                                     </div>
-                                    <span className="text-[13px] font-extrabold text-emerald-950 shrink-0 text-right">
+                                    <span className={`text-[13px] font-extrabold text-emerald-950 shrink-0 text-right ${!results.is_unlocked ? "filter blur-[6px] select-none opacity-50" : ""}`}>
                                       {displayValue}
                                     </span>
                                   </div>
@@ -1635,7 +1643,7 @@ export default function ProductsPage() {
                           {results.recommendations.map((rec: string, i: number) => (
                             <li
                               key={i}
-                              className="text-[14px] text-emerald-900/80 font-medium flex items-start gap-3 leading-relaxed"
+                              className={`text-[14px] text-emerald-900/80 font-medium flex items-start gap-3 leading-relaxed ${!results.is_unlocked ? "filter blur-[6px] select-none opacity-50" : ""}`}
                             >
                               <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
                               <span>{translateRecommendation(rec, isId)}</span>
@@ -1709,6 +1717,7 @@ function Metric({
   unit,
   highlight = false,
   icon: Icon,
+  isLocked = false,
 }: {
   label: string;
   sublabel?: string;
@@ -1716,6 +1725,7 @@ function Metric({
   unit?: string;
   highlight?: boolean;
   icon?: any;
+  isLocked?: boolean;
 }) {
   return (
     <div
@@ -1755,7 +1765,9 @@ function Metric({
       </div>
       <div className="relative z-10 mt-2">
         <p
-          className={`text-[20px] sm:text-[24px] font-extrabold leading-tight break-words`}
+          className={`text-[20px] sm:text-[24px] font-extrabold leading-tight break-words ${
+            isLocked ? "filter blur-[7px] select-none opacity-50" : ""
+          }`}
         >
           {value}
           {unit && (
