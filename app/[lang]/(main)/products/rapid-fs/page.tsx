@@ -33,6 +33,9 @@ import {
   LineChart,
   ChevronDown,
   Coins,
+  Building2,
+  Layers,
+  Waves,
 } from "lucide-react";
 import ScrollReveal from "../../../../../components/ScrollReveal";
 import en from "../../../../../dictionaries/en.json";
@@ -56,6 +59,12 @@ const MapPreview = dynamic(() => import("../../../../../components/MapPreview"),
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const getEcosystemOptions = (isId: boolean) => [
+  {
+    label: isId
+      ? "✨ Deteksi Otomatis Satelit (Rekomendasi NbS)"
+      : "✨ Auto-Detect via Satellite (NbS Recommended)",
+    value: "auto",
+  },
   { label: isId ? "Hutan Tropis" : "Tropical Forest", value: "hutan_tropis" },
   { label: isId ? "Mangrove" : "Mangrove", value: "mangrove" },
   { label: isId ? "Gambut" : "Peatland", value: "gambut" },
@@ -109,6 +118,90 @@ function humanizeError(raw: string, isId: boolean, mode: "spatial" | "manual") {
   return raw;
 }
 
+function getLandCoverIcon(cat: string) {
+  switch (cat) {
+    case "built_up":
+      return Building2;
+    case "forest":
+    case "mangrove":
+      return Trees;
+    case "cropland":
+    case "agroforestry":
+      return Sprout;
+    case "grassland":
+    case "shrubland":
+      return Leaf;
+    case "wetland":
+    case "water":
+      return Waves;
+    default:
+      return Layers;
+  }
+}
+
+function getLandCoverColors(cat: string) {
+  switch (cat) {
+    case "built_up":
+      return {
+        bg: "bg-slate-50",
+        border: "border-slate-200",
+        text: "text-slate-800",
+        badge: "bg-slate-100 text-slate-700",
+        bar: "bg-slate-400",
+        iconBg: "bg-slate-100 text-slate-600",
+      };
+    case "forest":
+    case "mangrove":
+      return {
+        bg: "bg-emerald-50/70",
+        border: "border-emerald-200",
+        text: "text-emerald-950",
+        badge: "bg-emerald-100 text-emerald-800",
+        bar: "bg-emerald-600",
+        iconBg: "bg-emerald-100 text-emerald-700",
+      };
+    case "cropland":
+    case "agroforestry":
+      return {
+        bg: "bg-amber-50/60",
+        border: "border-amber-200",
+        text: "text-amber-950",
+        badge: "bg-amber-100 text-amber-800",
+        bar: "bg-amber-500",
+        iconBg: "bg-amber-100 text-amber-700",
+      };
+    case "grassland":
+    case "shrubland":
+      return {
+        bg: "bg-lime-50/60",
+        border: "border-lime-200",
+        text: "text-lime-950",
+        badge: "bg-lime-100 text-lime-800",
+        bar: "bg-lime-500",
+        iconBg: "bg-lime-100 text-lime-700",
+      };
+    case "wetland":
+    case "water":
+      return {
+        bg: "bg-cyan-50/60",
+        border: "border-cyan-200",
+        text: "text-cyan-950",
+        badge: "bg-cyan-100 text-cyan-800",
+        bar: "bg-cyan-500",
+        iconBg: "bg-cyan-100 text-cyan-700",
+      };
+    default:
+      return {
+        bg: "bg-emerald-50/50",
+        border: "border-emerald-100",
+        text: "text-emerald-950",
+        badge: "bg-emerald-100 text-emerald-700",
+        bar: "bg-emerald-400",
+        iconBg: "bg-emerald-50 text-emerald-600",
+      };
+  }
+}
+
 export default function ProductsPage() {
   const params = useParams();
   const lang = (params?.lang as string) || "en";
@@ -126,7 +219,7 @@ export default function ProductsPage() {
   const [mode, setMode] = useState<"spatial" | "manual">("spatial");
 
   const [locationName, setLocationName] = useState("");
-  const [ecosystemType, setEcosystemType] = useState("hutan_tropis");
+  const [ecosystemType, setEcosystemType] = useState("auto");
   const [area, setArea] = useState("");
   const [duration, setDuration] = useState("30");
   const [carbonPrice, setCarbonPrice] = useState("10");
@@ -269,7 +362,7 @@ export default function ProductsPage() {
         const formData = new FormData();
         formData.append("file", selectedFile);
         formData.append("location_name", locationName || "Spatial Project");
-        formData.append("ecosystem_type", ecosystemType);
+        formData.append("ecosystem_type", "auto");
 
         response = await fetch(`${API_URL}/rapid-fs/upload-shapefile?lang=${lang}`, {
           method: "POST",
@@ -522,13 +615,13 @@ export default function ProductsPage() {
       ? isId
         ? [
           "Unggah file peta ZIP di panel kanan",
-          "Isi nama lokasi dan tipe ekosistem",
-          "Jalankan analisis dan tunggu hingga selesai",
+          "Isi nama lokasi proyek (opsional)",
+          "Jalankan analisis satelit otomatis",
         ]
         : [
           "Upload a map ZIP on the right panel",
-          "Enter location name and ecosystem type",
-          "Run the analysis and wait until it finishes",
+          "Enter project location name (optional)",
+          "Run the automated satellite analysis",
         ]
       : isId
         ? [
@@ -1112,21 +1205,13 @@ export default function ProductsPage() {
                           placeholder="e.g., Katingan Peatland"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-[12px] font-bold text-emerald-900/70 uppercase tracking-widest">
-                          {t.ecosystem_type}
-                        </label>
-                        <select
-                          className="w-full px-5 py-4 rounded-2xl border border-emerald-100 bg-slate-50 outline-none font-medium text-emerald-950 text-[14px] appearance-none cursor-pointer focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 transition-all"
-                          value={ecosystemType}
-                          onChange={(e) => setEcosystemType(e.target.value)}
-                        >
-                          {ecosystemOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="flex items-center gap-2.5 px-4 py-3 bg-emerald-50/70 border border-emerald-200/60 rounded-2xl text-emerald-900 text-[12px] font-medium">
+                        <Layers className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>
+                          {isId
+                            ? "Tutupan lahan & ekosistem akan otomatis dianalisis oleh satelit."
+                            : "Land cover & ecosystem breakdown will be auto-detected via satellite."}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -1332,7 +1417,86 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                {/* 2. HASIL TERBUKA: Preview Map (Bukti spasial valid) */}
+                {/* 2. HASIL TUTUPAN LAHAN (NbS Tool Style: Land Cover Breakdown) */}
+                {results.land_cover_breakdown && results.land_cover_breakdown.length > 0 && (
+                  <div className="p-6 md:p-8 bg-emerald-50/40 rounded-[2rem] border border-emerald-100/80 flex flex-col gap-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Layers className="w-4 h-4 text-emerald-600" />
+                          <h3 className="text-[13px] font-extrabold uppercase tracking-widest text-emerald-950">
+                            {isId ? "Distribusi Tutupan Lahan (Land Cover)" : "Land Cover Distribution"}
+                          </h3>
+                        </div>
+                        <p className="text-[12px] font-medium text-emerald-800/70">
+                          {isId
+                            ? "Estimasi proporsi spasial multi-kelas: memisahkan vegetasi berkarbon dengan pemukiman & infrastruktur."
+                            : "Multi-class spatial proportion: distinguishes carbon-sequestering vegetation from built-up settlements & infrastructure."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Proporsi */}
+                    <div className="w-full h-3.5 rounded-full overflow-hidden bg-slate-100 flex shadow-inner">
+                      {results.land_cover_breakdown.map((item: any, i: number) => {
+                        const colors = getLandCoverColors(item.category_key);
+                        return (
+                          <div
+                            key={i}
+                            style={{ width: `${item.percentage}%` }}
+                            className={`h-full ${colors.bar} transition-all duration-500`}
+                            title={`${isId ? item.class_name : item.class_name_en}: ${item.percentage}%`}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Grid Card Tutupan Lahan (NbS Style) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {results.land_cover_breakdown.map((item: any, i: number) => {
+                        const Icon = getLandCoverIcon(item.category_key);
+                        const colors = getLandCoverColors(item.category_key);
+                        return (
+                          <div
+                            key={i}
+                            className={`p-4 rounded-2xl border ${colors.bg} ${colors.border} flex flex-col justify-between transition-all hover:shadow-xs`}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-9 h-9 rounded-xl ${colors.iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className={`text-[12px] font-bold ${colors.text} truncate`}>
+                                    {isId ? item.class_name : item.class_name_en}
+                                  </p>
+                                  <p className="text-[10px] font-semibold text-emerald-900/50 uppercase tracking-wider">
+                                    {item.carbon_eligible
+                                      ? isId ? "Menyerap Karbon" : "Carbon Eligible"
+                                      : isId ? "Non-Karbon" : "Non-Carbon"}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${colors.badge} shrink-0`}>
+                                {item.percentage}%
+                              </span>
+                            </div>
+                            <div className="pt-2 border-t border-emerald-900/5 flex items-baseline justify-between">
+                              <span className="text-[11px] font-semibold text-emerald-900/60">
+                                {isId ? "Luas Tutupan" : "Cover Area"}
+                              </span>
+                              <span className="text-[14px] font-extrabold text-emerald-950">
+                                {formatNumber(item.area_ha)} ha
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. HASIL TERBUKA: Preview Map (Bukti spasial valid) */}
                 {results.geometry && (
                   <div className="flex flex-col">
                     <p className="text-[12px] font-extrabold text-emerald-950 uppercase tracking-widest mb-3 flex items-center gap-2">
