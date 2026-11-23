@@ -193,7 +193,7 @@ function AutoFitTitle({
   return (
     <h1
       ref={textRef}
-      className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-wide leading-[1.22] break-words"
+      className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight sm:tracking-normal md:tracking-wide leading-[1.22] break-words"
       style={
         typeof window !== "undefined" && window.innerWidth >= 1024
           ? {
@@ -232,10 +232,20 @@ export default function InsightDetailPage() {
 
   const [maxTitleHeight, setMaxTitleHeight] = useState<number>(240);
   const [titleMarginTop, setTitleMarginTop] = useState<number>(0);
+  const [isDesktop, setIsDesktop] = useState(false);
   const coverRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const backBtnRef = useRef<HTMLDivElement>(null);
   const titleContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(typeof window !== "undefined" && window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const measureBounds = () => {
@@ -471,8 +481,7 @@ export default function InsightDetailPage() {
       {/* ================= HERO SECTION ================= */}
       <section
         ref={sectionRef}
-        // Mengurangi padding bottom untuk mengurangi bg hijaunya sedikit
-        className="bg-emerald-950 pt-12 pb-4 md:pt-16 md:pb-6 lg:pt-20 lg:pb-8 px-8 md:px-12 lg:px-16 xl:px-20 relative z-10"
+        className="bg-emerald-950 pt-24 sm:pt-28 lg:pt-28 pb-6 md:pb-8 lg:pb-10 px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 relative z-10"
       >
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-900/40 rounded-full blur-[100px]" />
@@ -482,7 +491,7 @@ export default function InsightDetailPage() {
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10 lg:items-start">
             
             <div className="flex flex-col min-h-0 lg:pr-2 xl:pr-4">
-              <div ref={backBtnRef} className="pt-6 lg:pt-8">
+              <div ref={backBtnRef} className="pt-0 lg:pt-4">
                 <Link
                   href={`/${lang}/insights${isNews ? "?tab=news" : ""}`}
                   className="inline-flex items-center gap-2 text-[12px] md:text-[13px] font-bold text-emerald-400 hover:text-white transition-colors uppercase tracking-widest"
@@ -494,11 +503,15 @@ export default function InsightDetailPage() {
 
               <div
                 ref={titleContainerRef}
-                className="flex flex-col min-h-0 overflow-hidden py-1"
-                style={{
-                  marginTop: titleMarginTop > 0 ? `${titleMarginTop}px` : "2.5rem",
-                  maxHeight: maxTitleHeight > 0 ? `${maxTitleHeight}px` : undefined,
-                }}
+                className="flex flex-col min-h-0 py-1 mt-6 lg:mt-0 lg:overflow-hidden"
+                style={
+                  isDesktop
+                    ? {
+                        marginTop: titleMarginTop > 0 ? `${titleMarginTop}px` : "2.5rem",
+                        maxHeight: maxTitleHeight > 0 ? `${maxTitleHeight}px` : undefined,
+                      }
+                    : undefined
+                }
               >
                 <AutoFitTitle title={article.title} maxHeight={maxTitleHeight} />
               </div>

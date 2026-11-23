@@ -15,7 +15,13 @@ type Rulebook = {
   download_count: number;
 };
 
-export default function RulebookSection() {
+export default function RulebookSection({
+  searchQuery = "",
+  isId = false,
+}: {
+  searchQuery?: string;
+  isId?: boolean;
+}) {
   const [rulebooks, setRulebooks] = useState<Rulebook[]>([]);
   const [selectedRulebook, setSelectedRulebook] = useState<Rulebook | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,12 +35,21 @@ export default function RulebookSection() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filteredRulebooks = rulebooks.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      item.title.toLowerCase().includes(q) ||
+      (item.description && item.description.toLowerCase().includes(q))
+    );
+  });
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-32">
         <div className="w-10 h-10 border-4 border-stone-200 border-t-emerald-600 rounded-full animate-spin" />
         <p className="text-xs font-bold uppercase tracking-widest text-stone-400 animate-pulse">
-          Loading Rulebooks...
+          {isId ? "Memuat Rulebooks..." : "Loading Rulebooks..."}
         </p>
       </div>
     );
@@ -47,7 +62,22 @@ export default function RulebookSection() {
           <FileText className="w-6 h-6 text-stone-300" />
         </div>
         <p className="text-stone-500 font-medium text-[15px]">
-          Belum ada rulebook yang diterbitkan.
+          {isId ? "Belum ada rulebook yang diterbitkan." : "No rulebooks published yet."}
+        </p>
+      </div>
+    );
+  }
+
+  if (filteredRulebooks.length === 0) {
+    return (
+      <div className="bg-white rounded-[2rem] border border-stone-100 p-16 text-center shadow-sm">
+        <div className="w-16 h-16 rounded-full bg-stone-50 flex items-center justify-center mx-auto mb-4 border border-stone-100">
+          <FileText className="w-6 h-6 text-stone-300" />
+        </div>
+        <p className="text-stone-500 font-medium text-[15px]">
+          {isId
+            ? "Tidak ada rulebook yang sesuai dengan pencarian."
+            : "No rulebooks match your search."}
         </p>
       </div>
     );
@@ -55,7 +85,7 @@ export default function RulebookSection() {
 
   return (
     <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-      {rulebooks.map((item, index) => (
+      {filteredRulebooks.map((item, index) => (
         <ScrollReveal key={item.id} delay={`delay-${Math.min((index % 3) * 100, 300)}`}>
           <div className="group h-full flex flex-col bg-white rounded-[2rem] border border-stone-100 p-6 md:p-8 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all duration-300 hover:-translate-y-1">
             

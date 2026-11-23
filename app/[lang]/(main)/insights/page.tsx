@@ -307,27 +307,34 @@ export default function InsightsPage() {
                 : "Scientific and practical perspectives on climate, carbon, and sustainability."}
             </p>
 
-            {activeTab !== "rulebook" && (
-              <div className="relative w-full max-w-2xl mx-auto mb-8">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder={isId ? "Cari wawasan, topik, atau penulis..." : "Search insights, topics, or authors..."}
-                  className="w-full pl-14 pr-6 py-4 bg-white rounded-full text-[15px] font-medium text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all shadow-2xl"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            )}
+            <div className="relative w-full max-w-2xl mx-auto mb-8">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+              <input
+                type="text"
+                placeholder={
+                  activeTab === "rulebook"
+                    ? isId
+                      ? "Cari judul atau deskripsi rulebook..."
+                      : "Search rulebook title or description..."
+                    : isId
+                      ? "Cari wawasan, topik, atau penulis..."
+                      : "Search insights, topics, or authors..."
+                }
+                className="w-full pl-14 pr-6 py-4 bg-white rounded-full text-[15px] font-medium text-stone-800 placeholder:text-stone-400 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition-all shadow-2xl"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
 
-            <InsightTabs
-              activeTab={activeTab}
-              setActiveTab={(tab) => {
-                setActiveTab(tab);
-                setActiveTopic(null);
-                setSearchQuery("");
-              }}
-            />
+            <div className="flex justify-center w-full">
+              <InsightTabs
+                activeTab={activeTab}
+                setActiveTab={(tab) => {
+                  setActiveTab(tab);
+                  setActiveTopic(null);
+                }}
+              />
+            </div>
           </ScrollReveal>
         </div>
       </div>
@@ -651,7 +658,7 @@ export default function InsightsPage() {
             </div>
           </div>
         ) : (
-          <RulebookSection />
+          <RulebookSection searchQuery={searchQuery} isId={isId} />
         )}
       </div>
     </main>
