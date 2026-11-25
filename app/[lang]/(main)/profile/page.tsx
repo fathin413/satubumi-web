@@ -156,13 +156,26 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("file", selectedImage);
 
-      const res = await fetch(`${API_URL}/auth/me/profile-image`, {
+      // Coba endpoint self-service /auth/me/profile-image terlebih dahulu
+      let res = await fetch(`${API_URL}/auth/me/profile-image`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
+
+      // Fallback: Jika 404 Not Found (server belum memiliki rute /auth/me/profile-image),
+      // gunakan rute /users/${user.id}/profile-image yang sudah tersedia di server
+      if (res.status === 404 && user?.id) {
+        res = await fetch(`${API_URL}/users/${user.id}/profile-image`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+      }
 
       if (!res.ok) {
         throw new Error(
@@ -222,7 +235,7 @@ export default function ProfilePage() {
         payload.phone_number = phoneNumber.trim();
       }
 
-      const res = await fetch(`${API_URL}/auth/me`, {
+      let res = await fetch(`${API_URL}/auth/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -230,6 +243,18 @@ export default function ProfilePage() {
         },
         body: JSON.stringify(payload),
       });
+
+      // Fallback jika endpoint /auth/me belum mendukung PUT di server aktif
+      if (res.status === 404 && user?.id) {
+        res = await fetch(`${API_URL}/users/${user.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (!res.ok) {
         throw new Error(
@@ -292,7 +317,7 @@ export default function ProfilePage() {
     setSuccessMsg(null);
 
     try {
-      const res = await fetch(`${API_URL}/auth/me`, {
+      let res = await fetch(`${API_URL}/auth/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -302,6 +327,20 @@ export default function ProfilePage() {
           password: newPassword,
         }),
       });
+
+      // Fallback jika endpoint /auth/me belum mendukung PUT di server aktif
+      if (res.status === 404 && user?.id) {
+        res = await fetch(`${API_URL}/users/${user.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            password: newPassword,
+          }),
+        });
+      }
 
       if (!res.ok) {
         throw new Error(

@@ -218,14 +218,39 @@ export default function InsightsPage() {
           }),
         );
 
-        // Hero: prioritas is_featured, fallback view tertinggi
-        const featured =
-          publishedArticles.find((a) => a.is_featured) ||
-          [...publishedArticles].sort((a, b) => (b.view_count || 0) - (a.view_count || 0))[0] ||
-          null;
+        // Hero: prioritas is_featured (pilihan top admin), fallback view tertinggi
+        const featuredCandidates = publishedArticles.filter((a) => a.is_featured);
+        let featured: Article | null = null;
+
+        if (featuredCandidates.length > 0) {
+          // Jika ada artikel yang diset Top oleh admin, ambil yang view tertinggi (atau id terbaru)
+          featuredCandidates.sort((a, b) => {
+            const diff = (b.view_count || 0) - (a.view_count || 0);
+            if (diff !== 0) return diff;
+            return b.id - a.id;
+          });
+          featured = featuredCandidates[0];
+        } else if (publishedArticles.length > 0) {
+          // Jika tidak ada yang diset Top, pakai yang view terbanyak
+          const sortedByViews = [...publishedArticles].sort((a, b) => {
+            const diff = (b.view_count || 0) - (a.view_count || 0);
+            if (diff !== 0) return diff;
+            return b.id - a.id;
+          });
+          featured = sortedByViews[0];
+        }
+
+        // Trending Now (sidebar picks): Artikel sisa diurutkan berdasarkan view_count terbanyak
+        const remainingArticles = publishedArticles
+          .filter((a) => a.id !== featured?.id)
+          .sort((a, b) => {
+            const diff = (b.view_count || 0) - (a.view_count || 0);
+            if (diff !== 0) return diff;
+            return b.id - a.id;
+          });
 
         setTopInsights(
-          featured ? [featured, ...publishedArticles.filter((a) => a.id !== featured.id)] : publishedArticles,
+          featured ? [featured, ...remainingArticles] : remainingArticles,
         );
 
         if (category !== "insight") {
@@ -373,10 +398,17 @@ export default function InsightsPage() {
                         </span>
                       </div>
 
-                      <div className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-700/95 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-widest shadow-md">
-                        <TrendingUp className="w-3.5 h-3.5" />
-                        {isId ? "Paling Diminati" : "Trending"}
-                      </div>
+                      {featuredArticle.is_featured ? (
+                        <div className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-widest shadow-md">
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                          <span>{isId ? "Pilihan Utama" : "Top Pick"}</span>
+                        </div>
+                      ) : (
+                        <div className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-700/95 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-widest shadow-md">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          <span>{isId ? "Paling Diminati" : "Trending"}</span>
+                        </div>
+                      )}
                     </div>
 
                     <Link href={`/${lang}/insights/${featuredArticle.slug}`} className="group block px-6 md:px-8 py-8">
